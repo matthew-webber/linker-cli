@@ -11,6 +11,8 @@ import json
 from pathlib import Path
 from urllib.parse import urljoin, urlparse
 
+from constants import DOMAINS
+
 from migrate_hierarchy import print_hierarchy, print_proposed_hierarchy
 
 
@@ -79,22 +81,6 @@ class CLIState:
 
 # Global state instance
 state = CLIState()
-
-DOMAINS = [
-    "Enterprise",
-    "Adult Health",
-    "Hollings Cancer",
-    "Education",
-    "Research",
-    "Childrens Health",
-    "CDM",
-    "CGS",
-    "CHP",
-    "COM",
-    "CON",
-    "COP",
-    "MUSC Giving",
-]
 
 # Constants for Excel parsing
 HEADER_ROW = 3  # zero-based index where actual header resides

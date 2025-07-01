@@ -1,22 +1,7 @@
 
 from urllib.parse import urlparse
 
-# Map web addresses to Sitecore domain names
-DOMAIN_MAPPING = {
-    "web.musc.edu": "Enterprise",
-    "muschealth.org": "Health",
-    "education.musc.edu": "Education",
-    "research.musc.edu": "Research",
-    "hollingscancercenter.musc.edu": "Hollings",
-    "musckids.org": "Kids",
-    "dentistry.musc.edu": "Dental Medicine",
-    "giving.musc.edu": "Giving",
-    "gradstudies.musc.edu": "Graduate Studies",
-    "chp.musc.edu": "Health Professions",
-    "medicine.musc.edu": "Medicine",
-    "nursing.musc.edu": "Nursing",
-    "pharmacy.musc.edu": "Pharmacy",
-}
+from constants import DOMAIN_MAPPING
 
 def get_sitecore_root(existing_url: str) -> str:
     """
