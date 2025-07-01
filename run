@@ -16,6 +16,7 @@ from constants import DOMAINS
 
 from link_mapping import launch_link_mapping
 from migrate_hierarchy import print_hierarchy, print_proposed_hierarchy
+from spinner import Spinner
 
 
 import requests
@@ -687,38 +688,45 @@ def cmd_check(args):
 
     print(f"🔍 Checking page: {url}")
     print(f"🎯 Using selector: {selector}")
+    spinner = Spinner(f"🔄 Please wait...")
+    spinner.start()
 
     try:
         data = retrieve_page_data(url, selector)
-        state.current_page_data = data
-
-        # Auto-cache the data
-        url_safe = re.sub(r"[^\w\-_.]", "_", url)[:50]
-        cache_file = CACHE_DIR / f"page_check_{url_safe}.json"
-
-        with open(cache_file, "w", encoding="utf-8") as f:
-            json.dump(data, f, indent=2, ensure_ascii=False)
-
-        state.set_variable("CACHE_FILE", str(cache_file))
-        print(f"✅ Data cached to {cache_file}")
-
-        if "error" in data:
-            print(f"❌ Failed to extract data: {data['error']}")
-            return
-
-        # Show summary
-        links_count = len(data.get("links", []))
-        pdfs_count = len(data.get("pdfs", []))
-        embeds_count = len(data.get("embeds", []))
-
-        print(
-            f"📊 Summary: {links_count} links, {pdfs_count} PDFs, {embeds_count} embeds found"
-        )
-        print("💡 Use 'show page' to see detailed results")
 
     except Exception as e:
         print(f"❌ Error during page check: {e}")
         debug_print(f"Full error: {e}")
+        return
+
+    finally:
+        spinner.stop()
+
+    state.current_page_data = data
+
+    # Auto-cache the data
+    url_safe = re.sub(r"[^\w\-_.]", "_", url)[:50]
+    cache_file = CACHE_DIR / f"page_check_{url_safe}.json"
+
+    with open(cache_file, "w", encoding="utf-8") as f:
+        json.dump(data, f, indent=2, ensure_ascii=False)
+
+    state.set_variable("CACHE_FILE", str(cache_file))
+    print(f"✅ Data cached to {cache_file}")
+
+    if "error" in data:
+        print(f"❌ Failed to extract data: {data['error']}")
+        return
+
+    # Show summary
+    links_count = len(data.get("links", []))
+    pdfs_count = len(data.get("pdfs", []))
+    embeds_count = len(data.get("embeds", []))
+
+    print(
+        f"📊 Summary: {links_count} links, {pdfs_count} PDFs, {embeds_count} embeds found"
+    )
+    print("💡 Use 'show page' to see detailed results")
 
 
 def cmd_migrate(args):
