@@ -574,29 +574,42 @@ def extract_embeds_from_page(soup, selector="#main"):
 
 
 def migrate(**kwargs):
-    """Migrate page data to a new format or system.
-    This is a placeholder for the actual migration logic."""
-
+    """
+    Interactive migrate mode with submenu options.
+    """
     url = kwargs.get("url") or state.get_variable("URL")
-
     if not url:
-        print("❌ No URL set. Use 'set URL <value>' or provide URL as parameter.")
+        print("❌ No URL set. Use 'set URL <value>' first.")
         return
 
-    debug_print(f"🔄 Migrating page: {url}")
-    print_hierarchy(url)
+    while True:
+        print("\nMIGRATE MENU:")
+        print("(p) Page mapping - show existing & proposed hierarchy")
+        print("(l) Link mapping - review links to migrate")
+        print("(q) Quit migrate mode")
+        choice = input("Select option > ").strip().lower()
 
-    proposed = state.get_variable("PROPOSED_PATH")
-    if proposed:
-        debug_print(f"📋 Using saved proposed path: {proposed}")
-        print_proposed_hierarchy(url, proposed)
-    else:
-        proposed = input("Enter Proposed URL path (e.g. foo/bar/baz) > ").strip()
-        if proposed:
-            state.set_variable("PROPOSED_PATH", proposed)
-            print_proposed_hierarchy(url, proposed)
+        if choice == 'p':
+            # Page mapping
+            print_hierarchy(url)
+            proposed = state.get_variable("PROPOSED_PATH")
+            if proposed:
+                print_proposed_hierarchy(url, proposed)
+            else:
+                proposed = input("Enter Proposed URL path (e.g. foo/bar/baz) > ").strip()
+                if proposed:
+                    state.set_variable("PROPOSED_PATH", proposed)
+                    print_proposed_hierarchy(url, proposed)
+                else:
+                    debug_print("No proposed URL provided.")
+        elif choice == 'l':
+            # Link mapping placeholder
+            print("\n<Link mapping feature coming soon>\n")
+        elif choice == 'q':
+            print("Exiting migrate mode.")
+            break
         else:
-            debug_print("No proposed URL provided.")
+            print("Invalid choice, please select 'p', 'l', or 'q'.")
 
 
 # Command Handlers
