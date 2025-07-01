@@ -2,8 +2,10 @@
 Command handlers for Linker CLI.
 """
 
-from state import CLIState
+import os
+# from state import CLIState
 from dsm_utils import (
+    count_http,
     get_latest_dsm_file,
     load_spreadsheet,
     get_existing_url,
@@ -17,8 +19,67 @@ import re
 import json
 from pathlib import Path
 
+from constants import HEADER_ROW, DOMAINS
+
+COMMANDS = {
+    "set": lambda args: cmd_set(args, state, debug_print=debug_print),
+    "show": lambda args: cmd_show(args, state, debug_print=debug_print),
+    "check": lambda args: cmd_check(args, state, debug_print=debug_print),
+    "migrate": lambda args: cmd_migrate(args, state, debug_print=debug_print),
+    "load": cmd_load,
+    "help": cmd_help,
+    "debug": cmd_debug,
+    "clear": cmd_clear,
+    "legacy": cmd_legacy,
+    "lookup": cmd_lookup,
+    "links": cmd_analyze_links,
+    # Aliases
+    "vars": lambda args: cmd_show(["variables"], state, debug_print=debug_print),
+    "ls": lambda args: cmd_show(["variables"], state, debug_print=debug_print),
+    "exit": lambda args: exit(0),
+    "quit": lambda args: exit(0),
+    "q": lambda args: exit(0),
+}
+
 CACHE_DIR = Path("migration_cache")
 CACHE_DIR.mkdir(exist_ok=True)
+
+
+def cmd_help(args, state, debug_print=None):
+    """Show help information."""
+    if args and args[0] in COMMANDS:
+        cmd_name = args[0]
+        cmd_func = COMMANDS[cmd_name]
+        print(f"\nHelp for '{cmd_name}':")
+        print(cmd_func.__doc__ or "No help available.")
+        return
+
+    print("\n" + "=" * 60)
+    print("LINKER CLI - COMMAND REFERENCE")
+    print("=" * 60)
+    print("State Management:")
+    print("  set <VAR> <value>     Set a variable (URL, DOMAIN, SELECTOR, etc.)")
+    print("  show [target]         Show variables, domains, or page data")
+    print()
+    print("Data Operations:")
+    print("  load <domain> <row>   Load URL from spreadsheet")
+    print("  check                 Analyze the current URL")
+    print("  migrate               Migrate the current URL")
+    print()
+    print("Link Migration:")
+    print("  lookup <url>          Look up where a link should point on the new site")
+    print("  links                 Analyze all links on current page for migration")
+    print()
+    print("Utility:")
+    print("  help [command]        Show this help or help for specific command")
+    print("  debug [on|off]        Toggle debug output")
+    print("  clear                 Clear the screen")
+    print("  exit, quit            Exit the application")
+    print()
+    print("Variables:")
+    for var in state.variables.keys():
+        print(f"  {var:12} - {_get_var_description(var)}")
+    print("=" * 60)
 
 
 def cmd_set(args, state, debug_print=None):
@@ -115,4 +176,103 @@ def cmd_migrate(args, state, debug_print=None):
     migrate(state, url=url, debug_print=debug_print)
 
 
-# ...and so on for other command handlers...
+def cmd_load(args, state, debug_print=None):
+    """Handle the 'load' command for loading URLs from spreadsheet."""
+    if not args or len(args) < 2:
+        print("Usage: load <domain> <row_number>")
+        if state.excel_data:
+            print("Available domains:")
+            for i, domain in enumerate(DOMAINS, 1):
+                print(f"  {i:2}. {domain}")
+        return
+
+    if not state.excel_data:
+        dsm_file = get_latest_dsm_file()
+        if not dsm_file:
+            print("❌ No DSM file found. Set DSM_FILE manually.")
+            return
+        state.excel_data = load_spreadsheet(dsm_file)
+        state.set_variable("DSM_FILE", dsm_file)
+
+    user_domain = args[0]
+    try:
+        row_num = int(args[1])
+    except ValueError:
+        print("❌ Row number must be an integer")
+        return
+
+    # Find the actual domain name with case-insensitive lookup
+    domain = next((d for d in DOMAINS if d.lower() == user_domain.lower()), None)
+
+    if not domain:
+        print(f"❌ Domain '{user_domain}' not found.")
+        print("Available domains:")
+        for i, d in enumerate(DOMAINS, 1):
+            print(f"  {i:2}. {d}")
+        return
+
+    # Load the domain sheet
+    try:
+        df = state.excel_data.parse(domain, header=HEADER_ROW)
+        url = get_existing_url(df, row_num)
+        proposed = get_proposed_url(df, row_num)
+
+        if not url:
+            print(f"❌ Could not find URL for {domain} row {row_num}")
+            return
+
+        # Set the variables
+        state.set_variable("URL", url)
+        state.set_variable("PROPOSED_PATH", proposed)
+        state.set_variable("DOMAIN", domain)
+        state.set_variable("ROW", str(row_num))
+
+        warn = count_http(url) > 1
+        print(f"✅ Loaded URL: {url[:60]}{'...' if len(url) > 60 else ''}")
+        if warn:
+            print("⚠️  WARNING: Multiple URLs detected in this cell.")
+
+    except Exception as e:
+        print(f"❌ Error loading from spreadsheet: {e}")
+        debug_print(f"Full error: {e}")
+
+
+def cmd_debug(args):
+    """Toggle debug mode."""
+    global DEBUG
+    if not args:
+        DEBUG = not DEBUG
+    else:
+        arg = args[0].lower()
+        if arg in ["on", "true", "1", "yes"]:
+            DEBUG = True
+        elif arg in ["off", "false", "0", "no"]:
+            DEBUG = False
+        else:
+            print("Usage: debug [on|off]")
+            return
+
+    print(f"🐛 Debug mode: {'ON' if DEBUG else 'OFF'}")
+
+
+def cmd_clear(args):
+    """Clear the screen."""
+    os.system("clear" if os.name != "nt" else "cls")
+
+
+def cmd_legacy(args):
+    """Access the legacy workflow system."""
+    dsm_file = state.get_variable("DSM_FILE") or get_latest_dsm_file()
+    if not dsm_file:
+        print("❌ No DSM file found. Set DSM_FILE first.")
+        return
+
+    if not state.excel_data:
+        try:
+            state.excel_data = load_spreadsheet(dsm_file)
+            state.set_variable("DSM_FILE", dsm_file)
+        except Exception as e:
+            print(f"❌ Failed to load DSM file: {e}")
+            return
+
+    check_page_workflow(state.excel_data)

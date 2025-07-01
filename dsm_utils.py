@@ -106,3 +106,9 @@ def get_row_data(sheet_df, excel_row, columns=None, debug_print=None):
     if debug_print:
         debug_print(f"Extracted row data: {result}")
     return result
+
+
+def count_http(url, debug_print=None):
+    cnt = url.count("http")
+    debug_print(f"Counted {cnt} occurrences of 'http' in URL")
+    return cnt
