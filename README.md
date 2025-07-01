@@ -203,9 +203,11 @@ Status codes:
 - ❌ `4xx/5xx` - Link broken
 - ⚠️ `0` - Couldn't check (mailto, tel, etc.)
 
-### Migration Hierarchy
+### Migration Hierarchy (WIP)
 
-The `migrate` command shows how the page would be organized in Sitecore:
+**_This command will eventually generate additional types of helpful information related to the linking process. As of 7/1, it just translates "Existing URL" and "Proposed URL" strings into more readable page/directory hierarchies and prints it to stdout._**
+
+The `migrate` command prints out helpful information to reference while migrating pages:
 
 ```
 Existing directory hierarchy:
