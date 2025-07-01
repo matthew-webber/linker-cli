@@ -13,6 +13,7 @@ from urllib.parse import urljoin, urlparse
 
 from constants import DOMAINS
 
+from link_mapping import launch_link_mapping
 from migrate_hierarchy import print_hierarchy, print_proposed_hierarchy
 
 
@@ -589,23 +590,28 @@ def migrate(**kwargs):
         print("(q) Quit migrate mode")
         choice = input("Select option > ").strip().lower()
 
-        if choice == 'p':
+        if choice == "p":
             # Page mapping
             print_hierarchy(url)
             proposed = state.get_variable("PROPOSED_PATH")
             if proposed:
                 print_proposed_hierarchy(url, proposed)
             else:
-                proposed = input("Enter Proposed URL path (e.g. foo/bar/baz) > ").strip()
+                proposed = input(
+                    "Enter Proposed URL path (e.g. foo/bar/baz) > "
+                ).strip()
                 if proposed:
                     state.set_variable("PROPOSED_PATH", proposed)
                     print_proposed_hierarchy(url, proposed)
                 else:
                     debug_print("No proposed URL provided.")
-        elif choice == 'l':
-            # Link mapping placeholder
-            print("\n<Link mapping feature coming soon>\n")
-        elif choice == 'q':
+        elif choice == "l":
+            # Link mapping
+            if not state.current_page_data:
+                print("❌ No page data loaded. Run 'check' first.")
+            else:
+                launch_link_mapping(state.current_page_data)
+        elif choice == "q":
             print("Exiting migrate mode.")
             break
         else:
