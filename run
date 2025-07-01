@@ -1,7 +1,5 @@
 #!/usr/bin/env python3
-"""
-Proof-of-concept CLI for Linker workflow with debug logging.
-"""
+
 import os
 import re
 import glob
@@ -13,12 +11,27 @@ from pathlib import Path
 from urllib.parse import urljoin, urlparse
 
 from constants import DOMAINS
-
-from link_mapping import launch_link_mapping
-from migrate_hierarchy import print_hierarchy, print_proposed_hierarchy
 from spinner import Spinner
+from state import CLIState
+from commands import cmd_set, cmd_show, cmd_check, cmd_migrate
 
-
+from dsm_utils import (
+    get_latest_dsm_file,
+    load_spreadsheet,
+    get_existing_url,
+    get_proposed_url,
+    get_column_value,
+    get_row_data,
+)
+from page_extractor import (
+    retrieve_page_data,
+    display_page_data,
+    extract_links_from_page,
+    extract_embeds_from_page,
+    normalize_url,
+    check_status_code,
+)
+from migration import migrate
 import requests
 from bs4 import BeautifulSoup
 
@@ -83,7 +96,6 @@ class CLIState:
         return missing
 
 
-# Global state instance
 state = CLIState()
 
 # Constants for Excel parsing
@@ -621,125 +633,6 @@ def migrate(**kwargs):
             print("Invalid choice, please select 'p', 'l', or 'q'.")
 
 
-# Command Handlers
-def cmd_set(args):
-    """Handle the 'set' command for variables."""
-    if len(args) < 2:
-        print("Usage: set <VARIABLE> <value>")
-        print("Available variables:")
-        for var in state.variables.keys():
-            print(f"  {var}")
-        return
-
-    var_name = args[0].upper()
-    value = " ".join(args[1:])  # Join remaining args as value
-
-    if state.set_variable(var_name, value):
-        print(f"✅ {var_name} => {value}")
-
-        # Auto-load DSM file if DSM_FILE is set
-        if var_name == "DSM_FILE" and value:
-            try:
-                state.excel_data = load_spreadsheet(value)
-                print(f"📊 DSM file loaded successfully")
-            except Exception as e:
-                print(f"❌ Failed to load DSM file: {e}")
-    else:
-        print(f"❌ Unknown variable: {var_name}")
-
-
-def cmd_show(args):
-    """Handle the 'show' command."""
-    if not args:
-        # Show all variables if no specific target
-        state.list_variables()
-        return
-
-    target = args[0].lower()
-
-    if target == "variables" or target == "vars":
-        state.list_variables()
-    elif target == "domains":
-        if not state.excel_data:
-            print("❌ No DSM file loaded. Set DSM_FILE first.")
-            return
-        domains = list_domains(state.excel_data)
-        print(f"\n📋 Available domains ({len(domains)}):")
-        for i, domain in enumerate(domains, 1):
-            print(f"  {i:2}. {domain}")
-    elif target == "page" or target == "data":
-        if state.current_page_data:
-            display_page_data(state.current_page_data)
-        else:
-            print("❌ No page data loaded. Run 'check' first.")
-    else:
-        print(f"❌ Unknown show target: {target}")
-        print("Available targets: variables, domains, page")
-
-
-def cmd_check(args):
-    """Handle the 'check' command to analyze a page."""
-    url = state.get_variable("URL")
-    selector = state.get_variable("SELECTOR")
-
-    if not url:
-        print("❌ No URL set. Use 'set URL <value>' first.")
-        return
-
-    print(f"🔍 Checking page: {url}")
-    print(f"🎯 Using selector: {selector}")
-    spinner = Spinner(f"🔄 Please wait...")
-    spinner.start()
-
-    try:
-        data = retrieve_page_data(url, selector)
-
-    except Exception as e:
-        print(f"❌ Error during page check: {e}")
-        debug_print(f"Full error: {e}")
-        return
-
-    finally:
-        spinner.stop()
-
-    state.current_page_data = data
-
-    # Auto-cache the data
-    url_safe = re.sub(r"[^\w\-_.]", "_", url)[:50]
-    cache_file = CACHE_DIR / f"page_check_{url_safe}.json"
-
-    with open(cache_file, "w", encoding="utf-8") as f:
-        json.dump(data, f, indent=2, ensure_ascii=False)
-
-    state.set_variable("CACHE_FILE", str(cache_file))
-    print(f"✅ Data cached to {cache_file}")
-
-    if "error" in data:
-        print(f"❌ Failed to extract data: {data['error']}")
-        return
-
-    # Show summary
-    links_count = len(data.get("links", []))
-    pdfs_count = len(data.get("pdfs", []))
-    embeds_count = len(data.get("embeds", []))
-
-    print(
-        f"📊 Summary: {links_count} links, {pdfs_count} PDFs, {embeds_count} embeds found"
-    )
-    print("💡 Use 'show page' to see detailed results")
-
-
-def cmd_migrate(args):
-    """Handle the 'migrate' command."""
-    url = state.get_variable("URL")
-
-    if not url:
-        print("❌ No URL set. Use 'set URL <value>' first.")
-        return
-
-    migrate(url=url)
-
-
 def cmd_load(args):
     """Handle the 'load' command for loading URLs from spreadsheet."""
     if not args or len(args) < 2:
@@ -1096,12 +989,17 @@ def cmd_analyze_links(args):
     analyze_page_links_for_migration()
 
 
-# Command registry
+# Command registry, now passing state and debug_print as needed
+def debug_print(msg):
+    if DEBUG:
+        print(f"DEBUG: {msg}")
+
+
 COMMANDS = {
-    "set": cmd_set,
-    "show": cmd_show,
-    "check": cmd_check,
-    "migrate": cmd_migrate,
+    "set": lambda args: cmd_set(args, state, debug_print=debug_print),
+    "show": lambda args: cmd_show(args, state, debug_print=debug_print),
+    "check": lambda args: cmd_check(args, state, debug_print=debug_print),
+    "migrate": lambda args: cmd_migrate(args, state, debug_print=debug_print),
     "load": cmd_load,
     "help": cmd_help,
     "debug": cmd_debug,
@@ -1110,8 +1008,8 @@ COMMANDS = {
     "lookup": cmd_lookup,
     "links": cmd_analyze_links,
     # Aliases
-    "vars": lambda args: cmd_show(["variables"]),
-    "ls": lambda args: cmd_show(["variables"]),
+    "vars": lambda args: cmd_show(["variables"], state, debug_print=debug_print),
+    "ls": lambda args: cmd_show(["variables"], state, debug_print=debug_print),
     "exit": lambda args: exit(0),
     "quit": lambda args: exit(0),
     "q": lambda args: exit(0),
