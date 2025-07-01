@@ -13,7 +13,12 @@ from urllib.parse import urljoin, urlparse
 from constants import DOMAINS
 from spinner import Spinner
 from state import CLIState
-from commands import cmd_set, cmd_show, cmd_check, cmd_migrate
+from commands import (
+    cmd_set,
+    cmd_show,
+    cmd_check,
+    cmd_migrate,
+)
 
 from dsm_utils import (
     get_latest_dsm_file,
@@ -97,6 +102,26 @@ class CLIState:
 
 
 state = CLIState()
+
+COMMANDS = {
+    "set": lambda args: cmd_set(args, state, debug_print=debug_print),
+    "show": lambda args: cmd_show(args, state, debug_print=debug_print),
+    "check": lambda args: cmd_check(args, state, debug_print=debug_print),
+    "migrate": lambda args: cmd_migrate(args, state, debug_print=debug_print),
+    "load": None,  # cmd_load,
+    "help": None,  # cmd_help,
+    "debug": None,  # cmd_debug,
+    "clear": None,  # cmd_clear,
+    "legacy": None,  # cmd_legacy,
+    "lookup": None,  # cmd_lookup,
+    "links": None,  # cmd_analyze_links,
+    # Aliases
+    "vars": lambda args: cmd_show(["variables"], state, debug_print=debug_print),
+    "ls": lambda args: cmd_show(["variables"], state, debug_print=debug_print),
+    "exit": lambda args: exit(0),
+    "quit": lambda args: exit(0),
+    "q": lambda args: exit(0),
+}
 
 # Constants for Excel parsing
 HEADER_ROW = 3  # zero-based index where actual header resides
@@ -248,9 +273,6 @@ def get_row_data(sheet_df, excel_row, columns=None):
     return result
 
 
-
-
-
 def retrieve_page_data(url, selector="#main"):
     """
     Fetch page, parse links, PDFs, embeds.
@@ -354,144 +376,144 @@ def display_page_data(data):
     print("=" * 60)
 
 
-def check_page_workflow(excel):
-    """Legacy workflow function - maintained for compatibility."""
-    print(
-        "⚠️  This is the legacy workflow. Consider using the new state-based commands:"
-    )
-    print("   1. set URL <your_url>")
-    print("   2. check")
-    print("   3. show page")
-    print()
+# def check_page_workflow(excel):
+#     """Legacy workflow function - maintained for compatibility."""
+#     print(
+#         "⚠️  This is the legacy workflow. Consider using the new state-based commands:"
+#     )
+#     print("   1. set URL <your_url>")
+#     print("   2. check")
+#     print("   3. show page")
+#     print()
 
-    choice = input("Continue with legacy workflow? (y/n) > ").strip().lower()
-    if choice != "y":
-        print("💡 Use 'help' to see new commands")
-        return
+#     choice = input("Continue with legacy workflow? (y/n) > ").strip().lower()
+#     if choice != "y":
+#         print("💡 Use 'help' to see new commands")
+#         return
 
-    choice = input("Choose source: (u) Page URL, (s) Spreadsheet > ").strip().lower()
-    debug_print(f"User chose source: {choice}")
-    if choice == "s":
-        sheets = list_domains(excel)
-        for i, name in enumerate(sheets, start=1):
-            print(f"({i}) {name}")
-        idx = int(input("Select domain by number > ").strip())
-        domain = sheets[idx - 1]
-        debug_print(f"Selected domain: {domain}")
-        df = excel.parse(domain, header=HEADER_ROW)
-        debug_print(f"Loaded DataFrame with shape: {df.shape}")
-        row_num = int(input("Enter row number > ").strip())
-        url = get_existing_url(df, row_num)
-        if not url:
-            print("Could not find URL for that row.")
-            return
-        warn = count_http(url) > 1
-        print(f"URL: {url[:60]}{'...' if len(url) > 60 else ''}")
-        if warn:
-            print("WARNING: Multiple URLs detected in this cell.")
-        action = (
-            input("Options: (g) Get page data, (m) More details > ").strip().lower()
-        )
-        debug_print(f"User selected action: {action}")
-        if action == "g":
-            # Ask for CSS selector
-            selector = input("CSS selector (default: #main): ").strip() or "#main"
-            print(f"Loading page data using selector '{selector}'...")
+#     choice = input("Choose source: (u) Page URL, (s) Spreadsheet > ").strip().lower()
+#     debug_print(f"User chose source: {choice}")
+#     if choice == "s":
+#         sheets = list_domains(excel)
+#         for i, name in enumerate(sheets, start=1):
+#             print(f"({i}) {name}")
+#         idx = int(input("Select domain by number > ").strip())
+#         domain = sheets[idx - 1]
+#         debug_print(f"Selected domain: {domain}")
+#         df = excel.parse(domain, header=HEADER_ROW)
+#         debug_print(f"Loaded DataFrame with shape: {df.shape}")
+#         row_num = int(input("Enter row number > ").strip())
+#         url = get_existing_url(df, row_num)
+#         if not url:
+#             print("Could not find URL for that row.")
+#             return
+#         warn = count_http(url) > 1
+#         print(f"URL: {url[:60]}{'...' if len(url) > 60 else ''}")
+#         if warn:
+#             print("WARNING: Multiple URLs detected in this cell.")
+#         action = (
+#             input("Options: (g) Get page data, (m) More details > ").strip().lower()
+#         )
+#         debug_print(f"User selected action: {action}")
+#         if action == "g":
+#             # Ask for CSS selector
+#             selector = input("CSS selector (default: #main): ").strip() or "#main"
+#             print(f"Loading page data using selector '{selector}'...")
 
-            try:
-                data = retrieve_page_data(url, selector)
-                cache_file = CACHE_DIR / f"page_{domain}_{row_num}.json"
+#             try:
+#                 data = retrieve_page_data(url, selector)
+#                 cache_file = CACHE_DIR / f"page_{domain}_{row_num}.json"
 
-                # Save to JSON file with proper formatting
-                with open(cache_file, "w", encoding="utf-8") as f:
-                    json.dump(data, f, indent=2, ensure_ascii=False)
+#                 # Save to JSON file with proper formatting
+#                 with open(cache_file, "w", encoding="utf-8") as f:
+#                     json.dump(data, f, indent=2, ensure_ascii=False)
 
-                print(f"✅ Data cached to {cache_file}")
+#                 print(f"✅ Data cached to {cache_file}")
 
-                if "error" in data:
-                    print(f"❌ Failed to extract data: {data['error']}")
-                    return
+#                 if "error" in data:
+#                     print(f"❌ Failed to extract data: {data['error']}")
+#                     return
 
-                # Show summary
-                links_count = len(data.get("links", []))
-                pdfs_count = len(data.get("pdfs", []))
-                embeds_count = len(data.get("embeds", []))
+#                 # Show summary
+#                 links_count = len(data.get("links", []))
+#                 pdfs_count = len(data.get("pdfs", []))
+#                 embeds_count = len(data.get("embeds", []))
 
-                print(
-                    f"📊 Summary: {links_count} links, {pdfs_count} PDFs, {embeds_count} embeds found"
-                )
+#                 print(
+#                     f"📊 Summary: {links_count} links, {pdfs_count} PDFs, {embeds_count} embeds found"
+#                 )
 
-                next_act = (
-                    input("Options: (s) Show page data, (m) Migrate page > ")
-                    .strip()
-                    .lower()
-                )
-                debug_print(f"Next action: {next_act}")
-                if next_act == "s":
-                    display_page_data(data)
-                elif next_act == "m":
-                    print("Migrating page...")
-                    migrate(url, data, domain, row_num)
-            except Exception as e:
-                print(f"❌ Error during page extraction: {e}")
-                debug_print(f"Full error: {e}")
-        else:
-            print("Detail view not implemented.")
-    else:
-        # Direct URL input
-        url = input("Enter page URL > ").strip()
-        if not url:
-            print("No URL provided.")
-            return
+#                 next_act = (
+#                     input("Options: (s) Show page data, (m) Migrate page > ")
+#                     .strip()
+#                     .lower()
+#                 )
+#                 debug_print(f"Next action: {next_act}")
+#                 if next_act == "s":
+#                     display_page_data(data)
+#                 elif next_act == "m":
+#                     print("Migrating page...")
+#                     migrate(url, data, domain, row_num)
+#             except Exception as e:
+#                 print(f"❌ Error during page extraction: {e}")
+#                 debug_print(f"Full error: {e}")
+#         else:
+#             print("Detail view not implemented.")
+#     else:
+#         # Direct URL input
+#         url = input("Enter page URL > ").strip()
+#         if not url:
+#             print("No URL provided.")
+#             return
 
-        url = normalize_url(url)
-        warn = count_http(url) > 1
-        print(f"URL: {url[:60]}{'...' if len(url) > 60 else ''}")
-        if warn:
-            print("WARNING: Multiple URLs detected in this input.")
+#         url = normalize_url(url)
+#         warn = count_http(url) > 1
+#         print(f"URL: {url[:60]}{'...' if len(url) > 60 else ''}")
+#         if warn:
+#             print("WARNING: Multiple URLs detected in this input.")
 
-        selector = input("CSS selector (default: #main): ").strip() or "#main"
-        print(f"Loading page data using selector '{selector}'...")
+#         selector = input("CSS selector (default: #main): ").strip() or "#main"
+#         print(f"Loading page data using selector '{selector}'...")
 
-        try:
-            data = retrieve_page_data(url, selector)
+#         try:
+#             data = retrieve_page_data(url, selector)
 
-            # Create a simple cache filename for direct URLs
-            url_safe = re.sub(r"[^\w\-_.]", "_", url)[:50]
-            cache_file = CACHE_DIR / f"page_direct_{url_safe}.json"
+#             # Create a simple cache filename for direct URLs
+#             url_safe = re.sub(r"[^\w\-_.]", "_", url)[:50]
+#             cache_file = CACHE_DIR / f"page_direct_{url_safe}.json"
 
-            # Save to JSON file with proper formatting
-            with open(cache_file, "w", encoding="utf-8") as f:
-                json.dump(data, f, indent=2, ensure_ascii=False)
+#             # Save to JSON file with proper formatting
+#             with open(cache_file, "w", encoding="utf-8") as f:
+#                 json.dump(data, f, indent=2, ensure_ascii=False)
 
-            print(f"✅ Data cached to {cache_file}")
+#             print(f"✅ Data cached to {cache_file}")
 
-            if "error" in data:
-                print(f"❌ Failed to extract data: {data['error']}")
-                return
+#             if "error" in data:
+#                 print(f"❌ Failed to extract data: {data['error']}")
+#                 return
 
-            # Show summary
-            links_count = len(data.get("links", []))
-            pdfs_count = len(data.get("pdfs", []))
-            embeds_count = len(data.get("embeds", []))
+#             # Show summary
+#             links_count = len(data.get("links", []))
+#             pdfs_count = len(data.get("pdfs", []))
+#             embeds_count = len(data.get("embeds", []))
 
-            print(
-                f"📊 Summary: {links_count} links, {pdfs_count} PDFs, {embeds_count} embeds found"
-            )
+#             print(
+#                 f"📊 Summary: {links_count} links, {pdfs_count} PDFs, {embeds_count} embeds found"
+#             )
 
-            next_act = (
-                input("Options: (s) Show page data, (m) Migrate page > ")
-                .strip()
-                .lower()
-            )
-            if next_act == "s":
-                display_page_data(data)
-            elif next_act == "m":
-                print("Migrating page...")
-                migrate(url, data, domain, row_num)
-        except Exception as e:
-            print(f"❌ Error during page extraction: {e}")
-            debug_print(f"Full error: {e}")
+#             next_act = (
+#                 input("Options: (s) Show page data, (m) Migrate page > ")
+#                 .strip()
+#                 .lower()
+#             )
+#             if next_act == "s":
+#                 display_page_data(data)
+#             elif next_act == "m":
+#                 print("Migrating page...")
+#                 migrate(url, data, domain, row_num)
+#         except Exception as e:
+#             print(f"❌ Error during page extraction: {e}")
+#             debug_print(f"Full error: {e}")
 
 
 def normalize_url(url):
@@ -630,8 +652,6 @@ def migrate(**kwargs):
             print("Invalid choice, please select 'p', 'l', or 'q'.")
 
 
-
-
 def _get_var_description(var):
     """Get description for a variable."""
     descriptions = {
@@ -644,8 +664,6 @@ def _get_var_description(var):
         "PROPOSED_PATH": "Proposed URL path for migration (e.g. /foo/bar/baz)",
     }
     return descriptions.get(var, "User-defined variable")
-
-
 
 
 def lookup_link_in_dsm(link_url, excel_data=None):

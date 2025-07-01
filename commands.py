@@ -3,6 +3,7 @@ Command handlers for Linker CLI.
 """
 
 import os
+
 # from state import CLIState
 from dsm_utils import (
     count_http,
@@ -19,27 +20,37 @@ import re
 import json
 from pathlib import Path
 
-from constants import HEADER_ROW, DOMAINS
+from constants import DOMAINS
 
-COMMANDS = {
-    "set": lambda args: cmd_set(args, state, debug_print=debug_print),
-    "show": lambda args: cmd_show(args, state, debug_print=debug_print),
-    "check": lambda args: cmd_check(args, state, debug_print=debug_print),
-    "migrate": lambda args: cmd_migrate(args, state, debug_print=debug_print),
-    "load": cmd_load,
-    "help": cmd_help,
-    "debug": cmd_debug,
-    "clear": cmd_clear,
-    "legacy": cmd_legacy,
-    "lookup": cmd_lookup,
-    "links": cmd_analyze_links,
-    # Aliases
-    "vars": lambda args: cmd_show(["variables"], state, debug_print=debug_print),
-    "ls": lambda args: cmd_show(["variables"], state, debug_print=debug_print),
-    "exit": lambda args: exit(0),
-    "quit": lambda args: exit(0),
-    "q": lambda args: exit(0),
-}
+
+# def parse_command(input_line):
+#     """Parse command line input into command and arguments."""
+#     parts = input_line.strip().split()
+#     if not parts:
+#         return None, []
+
+#     command = parts[0].lower()
+#     args = parts[1:] if len(parts) > 1 else []
+#     return command, args
+
+
+# def execute_command(command, args, DEBUG):
+#     """Execute a command with given arguments."""
+#     if command in COMMANDS:
+#         try:
+#             COMMANDS[command](args)
+#         except KeyboardInterrupt:
+#             print("\n⚠️  Command interrupted")
+#         except Exception as e:
+#             print(f"❌ Command error: {e}")
+#             if DEBUG:
+#                 import traceback
+
+#                 traceback.print_exc()
+#     else:
+#         print(f"❌ Unknown command: {command}")
+#         print("💡 Type 'help' for available commands")
+
 
 CACHE_DIR = Path("migration_cache")
 CACHE_DIR.mkdir(exist_ok=True)
@@ -114,11 +125,8 @@ def cmd_show(args, state, debug_print=None):
         if not state.excel_data:
             print("❌ No DSM file loaded. Set DSM_FILE first.")
             return
-        from constants import DOMAINS
-
-        domains = DOMAINS
-        print(f"\n📋 Available domains ({len(domains)}):")
-        for i, domain in enumerate(domains, 1):
+        print(f"\n📋 Available domains ({len(DOMAINS)}):")
+        for i, domain in enumerate(DOMAINS, 1):
             print(f"  {i:2}. {domain}")
     elif target == "page" or target == "data":
         if state.current_page_data:
@@ -178,6 +186,8 @@ def cmd_migrate(args, state, debug_print=None):
 
 def cmd_load(args, state, debug_print=None):
     """Handle the 'load' command for loading URLs from spreadsheet."""
+
+    # Help text
     if not args or len(args) < 2:
         print("Usage: load <domain> <row_number>")
         if state.excel_data:
@@ -186,6 +196,7 @@ def cmd_load(args, state, debug_print=None):
                 print(f"  {i:2}. {domain}")
         return
 
+    # Load the DSM file if not already loaded
     if not state.excel_data:
         dsm_file = get_latest_dsm_file()
         if not dsm_file:
@@ -195,6 +206,7 @@ def cmd_load(args, state, debug_print=None):
         state.set_variable("DSM_FILE", dsm_file)
 
     user_domain = args[0]
+
     try:
         row_num = int(args[1])
     except ValueError:
@@ -213,7 +225,7 @@ def cmd_load(args, state, debug_print=None):
 
     # Load the domain sheet
     try:
-        df = state.excel_data.parse(domain, header=HEADER_ROW)
+        df = state.excel_data.parse(sheet_name=domain, header=HEADER_ROW)
         url = get_existing_url(df, row_num)
         proposed = get_proposed_url(df, row_num)
 
