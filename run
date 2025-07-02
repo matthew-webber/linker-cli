@@ -10,15 +10,9 @@ import warnings
 from pathlib import Path
 from urllib.parse import urljoin, urlparse
 
-from constants import DOMAINS
+from constants import DOMAINS, get_commands
 from spinner import Spinner
 from state import CLIState
-from commands import (
-    cmd_set,
-    cmd_show,
-    cmd_check,
-    cmd_migrate,
-)
 
 from dsm_utils import (
     get_latest_dsm_file,
@@ -103,25 +97,7 @@ class CLIState:
 
 state = CLIState()
 
-COMMANDS = {
-    "set": lambda args: cmd_set(args, state, debug_print=debug_print),
-    "show": lambda args: cmd_show(args, state, debug_print=debug_print),
-    "check": lambda args: cmd_check(args, state, debug_print=debug_print),
-    "migrate": lambda args: cmd_migrate(args, state, debug_print=debug_print),
-    "load": None,  # cmd_load,
-    "help": None,  # cmd_help,
-    "debug": None,  # cmd_debug,
-    "clear": None,  # cmd_clear,
-    "legacy": None,  # cmd_legacy,
-    "lookup": None,  # cmd_lookup,
-    "links": None,  # cmd_analyze_links,
-    # Aliases
-    "vars": lambda args: cmd_show(["variables"], state, debug_print=debug_print),
-    "ls": lambda args: cmd_show(["variables"], state, debug_print=debug_print),
-    "exit": lambda args: exit(0),
-    "quit": lambda args: exit(0),
-    "q": lambda args: exit(0),
-}
+COMMANDS = get_commands(state, debug_print=DEBUG)
 
 # Constants for Excel parsing
 HEADER_ROW = 3  # zero-based index where actual header resides
@@ -650,20 +626,6 @@ def migrate(**kwargs):
             break
         else:
             print("Invalid choice, please select 'p', 'l', or 'q'.")
-
-
-def _get_var_description(var):
-    """Get description for a variable."""
-    descriptions = {
-        "URL": "Target URL to analyze/migrate",
-        "DOMAIN": "Current spreadsheet domain",
-        "ROW": "Current spreadsheet row number",
-        "SELECTOR": "CSS selector for content extraction",
-        "DSM_FILE": "Path to the DSM Excel file",
-        "CACHE_FILE": "Last cached data file path",
-        "PROPOSED_PATH": "Proposed URL path for migration (e.g. /foo/bar/baz)",
-    }
-    return descriptions.get(var, "User-defined variable")
 
 
 def lookup_link_in_dsm(link_url, excel_data=None):
