@@ -199,10 +199,12 @@ def cmd_check(args, state):
 
 def cmd_migrate(args, state):
     url = state.get_variable("URL")
+
     if not url:
         print("❌ No URL set. Use 'set URL <value>' first.")
         return
-    migrate(state, url=urlt)
+
+    migrate(state, url=url)
 
 
 def cmd_load(args, state):
@@ -268,7 +270,7 @@ def cmd_load(args, state):
         # Set the variables
         state.set_variable("URL", url)
         state.set_variable("PROPOSED_PATH", proposed)
-        state.set_variable("DOMAIN", domain)
+        state.set_variable("DOMAIN", domain.get("full_name", "Domain Placeholder"))
         state.set_variable("ROW", str(row_num))
 
         warn = count_http(url) > 1
