@@ -14,7 +14,7 @@ class CLIState:
             "DOMAIN": "",
             "ROW": "",
             "SELECTOR": "#main",
-            "SIDEBAR_SELECTOR": "#sidebar-components",
+            "INCLUDE_SIDEBAR": "TRUE",
             "DSM_FILE": "",
             "CACHE_FILE": "",
             "PROPOSED_PATH": "",
@@ -48,7 +48,7 @@ class CLIState:
         for name, value in self.variables.items():
             status = "✅ SET" if value else "❌ UNSET"
             display_value = value[:40] + "..." if len(value) > 40 else value
-            print(f"{name:12} = {display_value:40} [{status}]")
+            print(f"{name:20} = {display_value:45} [{status}]")
         print("=" * 50)
 
     def validate_required_vars(self, required_vars):
