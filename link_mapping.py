@@ -17,22 +17,18 @@ def launch_link_mapping(page_data):
         while True:
             stdscr.erase()
             h, w = stdscr.getmaxyx()
-            stdscr.addstr(
-                0,
-                0,
-                "Link Mapping Checklist Mode\n\nCommands: ↑/↓ or k/j to move, space to toggle, q to quit",
-                curses.A_BOLD,
-            )
+            stdscr.addstr(0, 0, "Link Mapping Checklist Mode", curses.A_BOLD)
+            stdscr.addstr(1, 0, "Commands: ↑/↓ or k/j to move, space to toggle, q to quit", curses.A_BOLD)
             for idx, (text, href, status) in enumerate(items):
                 marker = "[x]" if selected[idx] else "[ ]"
                 disp = text if len(text) <= w - 10 else text[: w - 13] + "..."
                 line = f"{marker} {disp}"
                 if idx == pos:
                     stdscr.attron(curses.A_REVERSE)
-                    stdscr.addstr(idx + 1, 0, line)
+                    stdscr.addstr(idx + 3, 0, line)
                     stdscr.attroff(curses.A_REVERSE)
                 else:
-                    stdscr.addstr(idx + 1, 0, line)
+                    stdscr.addstr(idx + 3, 0, line)
             key = stdscr.getch()
             if key in (curses.KEY_UP, ord("k")):
                 pos = (pos - 1) % len(items)
