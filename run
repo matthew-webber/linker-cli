@@ -46,90 +46,6 @@ def normalize_url(url):
     return url
 
 
-def check_status_code(url):
-    """Check the HTTP status code of a URL."""
-    try:
-        response = requests.head(url, allow_redirects=True, timeout=10)
-        return str(response.status_code)
-    except requests.RequestException:
-        return "0"
-
-
-def extract_links_from_page(url, selector="#main"):
-    """
-    Fetch the page, parse HTML, and return list of (text, absolute href, status_code).
-    Also separates PDF links from regular links.
-    """
-    debug_print(f"Fetching page: {url}")
-    debug_print(f"Using CSS selector: {selector}")
-
-    try:
-        response = requests.get(url, timeout=30)
-        response.raise_for_status()
-
-        soup = BeautifulSoup(response.text, "html.parser")
-        container = soup.select_one(selector)
-
-        if not container:
-            debug_print(
-                f"Warning: No element found matching selector '{selector}', falling back to entire page"
-            )
-            container = soup
-
-        anchors = container.find_all("a", href=True)
-        debug_print(f"Found {len(anchors)} anchor tags")
-
-        links = []
-        pdfs = []
-
-        for a in anchors:
-            text = a.get_text(strip=True)
-            href = urljoin(response.url, a["href"])
-            debug_print(
-                f"Processing link: {text[:50]}{'...' if len(text) > 50 else ''} -> {href}"
-            )
-            status_code = check_status_code(href)
-
-            # Check if this is a PDF link
-            if href.lower().endswith(".pdf"):
-                pdfs.append((text, href, status_code))
-                debug_print(f"  -> Categorized as PDF")
-            else:
-                links.append((text, href, status_code))
-                debug_print(f"  -> Categorized as regular link")
-
-        return links, pdfs
-
-    except requests.RequestException as e:
-        debug_print(f"Error fetching page: {e}")
-        raise
-
-
-def extract_embeds_from_page(soup, selector="#main"):
-    """Extract Vimeo embedded content from within the specified container."""
-    embeds = []
-
-    # Get the same container used for link extraction
-    container = soup.select_one(selector)
-    if not container:
-        debug_print(
-            f"Warning: No element found matching selector '{selector}', falling back to entire page for embeds"
-        )
-        container = soup
-
-    # Find iframes with Vimeo content only
-    for iframe in container.find_all("iframe", src=True):
-        src = iframe.get("src", "")
-        if "vimeo" in src.lower():
-            title = (
-                iframe.get("title", "") or iframe.get_text(strip=True) or "Vimeo Video"
-            )
-            embeds.append(("vimeo", title, src))
-            debug_print(f"Found Vimeo embed: {title}")
-
-    return embeds
-
-
 # Command parsing and execution
 def parse_command(input_line):
     """Parse command line input into command and arguments."""
@@ -192,7 +108,10 @@ def main():
     if args.selector:
         state.set_variable("SELECTOR", args.selector)
     if args.include_sidebar:
+        state.set_variable("INCLUDE_SIDEBAR", "true")
         debug_print("Include sidebar: TRUE")
+    else:
+        state.set_variable("INCLUDE_SIDEBAR", "false")
 
     # Try to auto-load the latest DSM file
     dsm_file = get_latest_dsm_file()

@@ -14,7 +14,7 @@ class CLIState:
             "DOMAIN": "",
             "ROW": "",
             "SELECTOR": "#main",
-            "INCLUDE_SIDEBAR": "TRUE",
+            "INCLUDE_SIDEBAR": "false",
             "DSM_FILE": "",
             "CACHE_FILE": "",
             "PROPOSED_PATH": "",

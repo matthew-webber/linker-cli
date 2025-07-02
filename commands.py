@@ -28,22 +28,25 @@ DEBUG = True
 CACHE_DIR = Path("migration_cache")
 CACHE_DIR.mkdir(exist_ok=True)
 
+
 def cmd_check(args, state):
     url = state.get_variable("URL")
     selector = state.get_variable("SELECTOR")
+    include_sidebar = state.get_variable("INCLUDE_SIDEBAR").lower() == "true"
     if not url:
         print("❌ No URL set. Use 'set URL <value>' first.")
         return
     print(f"🔍 Checking page: {url}")
     print(f"🎯 Using selector: {selector}")
+    if include_sidebar:
+        print("🔲 Including sidebar content")
     spinner = Spinner(f"🔄 Please wait...")
     spinner.start()
     try:
-        data = retrieve_page_data(url, selector)
+        data = retrieve_page_data(url, selector, include_sidebar)
     except Exception as e:
         print(f"❌ Error during page check: {e}")
-        if debug_print:
-            debug_print(f"Full error: {e}")
+        debug_print(f"Full error: {e}")
         return
     finally:
         spinner.stop()
@@ -60,15 +63,40 @@ def cmd_check(args, state):
     links_count = len(data.get("links", []))
     pdfs_count = len(data.get("pdfs", []))
     embeds_count = len(data.get("embeds", []))
-    print(
-        f"📊 Summary: {links_count} links, {pdfs_count} PDFs, {embeds_count} embeds found"
-    )
+
+    # Include sidebar counts in summary
+    sidebar_links_count = len(data.get("sidebar_links", []))
+    sidebar_pdfs_count = len(data.get("sidebar_pdfs", []))
+    sidebar_embeds_count = len(data.get("sidebar_embeds", []))
+
+    total_links = links_count + sidebar_links_count
+    total_pdfs = pdfs_count + sidebar_pdfs_count
+    total_embeds = embeds_count + sidebar_embeds_count
+
+    if include_sidebar and (
+        sidebar_links_count > 0 or sidebar_pdfs_count > 0 or sidebar_embeds_count > 0
+    ):
+        print(
+            f"📊 Main content: {links_count} links, {pdfs_count} PDFs, {embeds_count} embeds"
+        )
+        print(
+            f"📊 Sidebar content: {sidebar_links_count} links, {sidebar_pdfs_count} PDFs, {sidebar_embeds_count} embeds"
+        )
+        print(
+            f"📊 Total: {total_links} links, {total_pdfs} PDFs, {total_embeds} embeds"
+        )
+    else:
+        print(
+            f"📊 Summary: {total_links} links, {total_pdfs} PDFs, {total_embeds} embeds found"
+        )
+
     print("💡 Use 'show page' to see detailed results")
 
 
 def cmd_clear(args):
     """Clear the screen."""
     os.system("clear" if os.name != "nt" else "cls")
+
 
 def cmd_debug(args):
     """Toggle debug mode."""
@@ -124,11 +152,13 @@ def cmd_help(args, state):
         print(f"  {var:12} - {_get_var_description(var)}")
     print("=" * 60)
 
+
 def cmd_links(args, state):
     """Analyze all links on the current page for migration requirements."""
     from lookup_utils import analyze_page_links_for_migration
 
     analyze_page_links_for_migration(state)
+
 
 def cmd_lookup(args, state):
     """Look up a link URL in the DSM spreadsheet to find its new location."""
@@ -159,6 +189,7 @@ def cmd_lookup(args, state):
 
     result = lookup_link_in_dsm(link_url, state.excel_data, state)
     display_link_lookup_result(result)
+
 
 def cmd_load(args, state):
     """Handle the 'load' command for loading URLs from spreadsheet."""
@@ -246,7 +277,6 @@ def cmd_migrate(args, state):
     migrate(state, url=url)
 
 
-
 def cmd_set(args, state):
     if len(args) < 2:
         print("Usage: set <VARIABLE> <value>")
@@ -260,7 +290,7 @@ def cmd_set(args, state):
         print(f"✅ {var_name} => {value}")
         if var_name == "DSM_FILE" and value:
             try:
-                state.excel_data = load_spreadsheet(valuet)
+                state.excel_data = load_spreadsheet(value)
                 print(f"📊 DSM file loaded successfully")
             except Exception as e:
                 print(f"❌ Failed to load DSM file: {e}")
@@ -304,17 +334,7 @@ def _get_var_description(var):
     }
     return descriptions.get(var, "User-defined variable")
 
+
 def display_domains():
     for i, domain in enumerate([domain.get("full_name") for domain in DOMAINS], 1):
         print(f"  {i:2}. {domain}")
-
-
-
-
-
-
-
-
-
-
-

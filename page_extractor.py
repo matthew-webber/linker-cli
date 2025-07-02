@@ -9,6 +9,8 @@ from bs4 import BeautifulSoup
 from urllib.parse import urljoin, urlparse
 from pathlib import Path
 
+from utils import debug_print
+
 CACHE_DIR = Path("migration_cache")
 CACHE_DIR.mkdir(exist_ok=True)
 
@@ -28,57 +30,49 @@ def check_status_code(url):
         return "0"
 
 
-def extract_links_from_page(url, selector="#main", debug_print=None):
-    if debug_print:
-        debug_print(f"Fetching page: {url}")
-        debug_print(f"Using CSS selector: {selector}")
+def extract_links_from_page(url, selector="#main"):
+    debug_print(f"Fetching page: {url}")
+    debug_print(f"Using CSS selector: {selector}")
     try:
         response = requests.get(url, timeout=30)
         response.raise_for_status()
         soup = BeautifulSoup(response.text, "html.parser")
         container = soup.select_one(selector)
         if not container:
-            if debug_print:
-                debug_print(
-                    f"Warning: No element found matching selector '{selector}', falling back to entire page"
-                )
+            debug_print(
+                f"Warning: No element found matching selector '{selector}', falling back to entire page"
+            )
             container = soup
         anchors = container.find_all("a", href=True)
-        if debug_print:
-            debug_print(f"Found {len(anchors)} anchor tags")
+        debug_print(f"Found {len(anchors)} anchor tags")
         links = []
         pdfs = []
         for a in anchors:
             text = a.get_text(strip=True)
             href = urljoin(response.url, a["href"])
-            if debug_print:
-                debug_print(
-                    f"Processing link: {text[:50]}{'...' if len(text) > 50 else ''} -> {href}"
-                )
+            debug_print(
+                f"Processing link: {text[:50]}{'...' if len(text) > 50 else ''} -> {href}"
+            )
             status_code = check_status_code(href)
             if href.lower().endswith(".pdf"):
                 pdfs.append((text, href, status_code))
-                if debug_print:
-                    debug_print(f"  -> Categorized as PDF")
+                debug_print(f"  -> Categorized as PDF")
             else:
                 links.append((text, href, status_code))
-                if debug_print:
-                    debug_print(f"  -> Categorized as regular link")
+                debug_print(f"  -> Categorized as regular link")
         return links, pdfs
     except requests.RequestException as e:
-        if debug_print:
-            debug_print(f"Error fetching page: {e}")
+        debug_print(f"Error fetching page: {e}")
         raise
 
 
-def extract_embeds_from_page(soup, selector="#main", debug_print=None):
+def extract_embeds_from_page(soup, selector="#main"):
     embeds = []
     container = soup.select_one(selector)
     if not container:
-        if debug_print:
-            debug_print(
-                f"Warning: No element found matching selector '{selector}', falling back to entire page for embeds"
-            )
+        debug_print(
+            f"Warning: No element found matching selector '{selector}', falling back to entire page for embeds"
+        )
         container = soup
     for iframe in container.find_all("iframe", src=True):
         src = iframe.get("src", "")
@@ -87,43 +81,73 @@ def extract_embeds_from_page(soup, selector="#main", debug_print=None):
                 iframe.get("title", "") or iframe.get_text(strip=True) or "Vimeo Video"
             )
             embeds.append(("vimeo", title, src))
-            if debug_print:
-                debug_print(f"Found Vimeo embed: {title}")
+            debug_print(f"Found Vimeo embed: {title}")
     return embeds
 
 
-def retrieve_page_data(url, selector="#main", debug_print=None):
-    if debug_print:
-        debug_print(f"Retrieving page data for URL: {url}")
+def retrieve_page_data(url, selector="#main", include_sidebar=False):
+    debug_print(f"Retrieving page data for URL: {url}")
+
     try:
         url = normalize_url(url)
         response = requests.get(url, timeout=30)
         response.raise_for_status()
         soup = BeautifulSoup(response.text, "html.parser")
-        links, pdfs = extract_links_from_page(url, selector, debug_print)
-        embeds = extract_embeds_from_page(soup, selector, debug_print)
+
+        # Extract main content
+        main_links, main_pdfs = extract_links_from_page(url, selector)
+        main_embeds = extract_embeds_from_page(soup, selector)
+
+        # Extract sidebar content if requested
+        sidebar_links, sidebar_pdfs, sidebar_embeds = [], [], []
+        if include_sidebar:
+            try:
+                sidebar_links, sidebar_pdfs = extract_links_from_page(
+                    url, "#sidebar-components"
+                )
+                sidebar_embeds = extract_embeds_from_page(soup, "#sidebar-components")
+                debug_print(
+                    f"Sidebar extraction: {len(sidebar_links)} links, {len(sidebar_pdfs)} PDFs, {len(sidebar_embeds)} embeds"
+                )
+            except Exception as e:
+                debug_print(f"Warning: Error extracting sidebar content: {e}")
+
         data = {
             "url": url,
-            "links": links,
-            "pdfs": pdfs,
-            "embeds": embeds,
+            "links": main_links,
+            "pdfs": main_pdfs,
+            "embeds": main_embeds,
+            "sidebar_links": sidebar_links,
+            "sidebar_pdfs": sidebar_pdfs,
+            "sidebar_embeds": sidebar_embeds,
             "selector_used": selector,
+            "include_sidebar": include_sidebar,
         }
-        if debug_print:
+
+        total_main = len(main_links) + len(main_pdfs) + len(main_embeds)
+        total_sidebar = len(sidebar_links) + len(sidebar_pdfs) + len(sidebar_embeds)
+        debug_print(
+            f"Extracted main content: {len(main_links)} links, {len(main_pdfs)} PDFs, {len(main_embeds)} embeds"
+        )
+        if include_sidebar:
             debug_print(
-                f"Extracted {len(links)} links, {len(pdfs)} PDFs, {len(embeds)} embeds"
+                f"Extracted sidebar content: {len(sidebar_links)} links, {len(sidebar_pdfs)} PDFs, {len(sidebar_embeds)} embeds"
             )
+
         return data
     except Exception as e:
-        if debug_print:
-            debug_print(f"Error retrieving page data: {e}")
+        debug_print(f"Error retrieving page data: {e}")
         return {
             "url": url,
             "links": [],
             "pdfs": [],
             "embeds": [],
+            "sidebar_links": [],
+            "sidebar_pdfs": [],
+            "sidebar_embeds": [],
             "error": str(e),
             "selector_used": selector,
+            "include_sidebar": include_sidebar,
         }
 
 
@@ -136,7 +160,11 @@ def display_page_data(data):
         return
     print(f"📄 Source URL: {data.get('url', 'Unknown')}")
     print(f"🎯 CSS Selector: {data.get('selector_used', 'Unknown')}")
+    if data.get("include_sidebar", False):
+        print("🔲 Sidebar inclusion: ENABLED")
     print()
+
+    # Display main content
     links = data.get("links", [])
     print(f"🔗 LINKS FOUND: {len(links)}")
     if links:
@@ -147,6 +175,21 @@ def display_page_data(data):
             )
             print(f"{i:2}. {status_icon} [{status}] {text[:50]}")
             print(f"    → {href}")
+
+    # Display sidebar links if they exist (with subtle distinction)
+    sidebar_links = data.get("sidebar_links", [])
+    if sidebar_links:
+        print()
+        print(f"🔗 SIDEBAR LINKS: {len(sidebar_links)}")
+        print("-" * 40)
+        for i, (text, href, status) in enumerate(sidebar_links, len(links) + 1):
+            status_icon = (
+                "✅" if status.startswith("2") else "❌" if status != "0" else "⚠️"
+            )
+            # Add subtle indicator with │ character
+            print(f"{i:2}.│{status_icon} [{status}] {text[:50]}")
+            print(f"   │→ {href}")
+
     print()
     pdfs = data.get("pdfs", [])
     print(f"📄 PDF FILES: {len(pdfs)}")
@@ -158,6 +201,20 @@ def display_page_data(data):
             )
             print(f"{i:2}. {status_icon} [{status}] {text[:50]}")
             print(f"    → {href}")
+
+    # Display sidebar PDFs if they exist
+    sidebar_pdfs = data.get("sidebar_pdfs", [])
+    if sidebar_pdfs:
+        print()
+        print(f"📄 SIDEBAR PDF FILES: {len(sidebar_pdfs)}")
+        print("-" * 40)
+        for i, (text, href, status) in enumerate(sidebar_pdfs, len(pdfs) + 1):
+            status_icon = (
+                "✅" if status.startswith("2") else "❌" if status != "0" else "⚠️"
+            )
+            print(f"{i:2}.│{status_icon} [{status}] {text[:50]}")
+            print(f"   │→ {href}")
+
     print()
     embeds = data.get("embeds", [])
     print(f"🎬 VIMEO EMBEDS: {len(embeds)}")
@@ -166,5 +223,16 @@ def display_page_data(data):
         for i, (embed_type, title, src) in enumerate(embeds, 1):
             print(f"{i:2}. [VIMEO] {title[:50]}")
             print(f"    → {src}")
+
+    # Display sidebar embeds if they exist
+    sidebar_embeds = data.get("sidebar_embeds", [])
+    if sidebar_embeds:
+        print()
+        print(f"🎬 SIDEBAR VIMEO EMBEDS: {len(sidebar_embeds)}")
+        print("-" * 40)
+        for i, (embed_type, title, src) in enumerate(sidebar_embeds, len(embeds) + 1):
+            print(f"{i:2}.│[VIMEO] {title[:50]}")
+            print(f"   │→ {src}")
+
     print()
     print("=" * 60)
