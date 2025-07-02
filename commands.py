@@ -213,7 +213,9 @@ def cmd_load(args, state):
         print("Usage: load <domain> <row_number>")
         if state.excel_data:
             print("Available domains:")
-            for i, domain in enumerate(DOMAINS, 1):
+            for i, domain in enumerate(
+                [domain.get("full_name") for domain in DOMAINS], 1
+            ):
                 print(f"  {i:2}. {domain}")
         return
 
@@ -228,26 +230,27 @@ def cmd_load(args, state):
 
     user_domain = args[0]
 
-    try:
-        row_num = int(args[1])
-    except ValueError:
-        print("❌ Row number must be an integer")
-        return
-
     # Find the actual domain name with case-insensitive lookup
     domain = next(
         (d for d in DOMAINS if d.get("full_name", "").lower() == user_domain.lower()),
         None,
     )
 
+    df_header_row = domain.get("worksheet_header_row", 4) if domain else 4
+    df_header_row = df_header_row + 2
+
+    try:
+        row_num = int(args[1])
+    except ValueError:
+        print("❌ Row number must be an integer")
+        return
+
     if not domain:
         print(f"❌ Domain '{user_domain}' not found.")
         print("Available domains:")
-        for i, d in enumerate(DOMAINS, 1):
-            print(f"  {i:2}. {d}")
+        for i, domain in enumerate([domain.get("full_name") for domain in DOMAINS], 1):
+            print(f"  {i:2}. {domain}")
         return
-
-    print(f"DOMAIN DOMAIN", domain)
 
     # Load the domain sheet
     try:
@@ -255,8 +258,8 @@ def cmd_load(args, state):
             sheet_name=domain.get("full_name"),
             header=domain.get("worksheet_header_row", 4),
         )
-        url = get_existing_url(df, row_num)
-        proposed = get_proposed_url(df, row_num)
+        url = get_existing_url(df, row_num - df_header_row)
+        proposed = get_proposed_url(df, row_num - df_header_row)
 
         if not url:
             print(f"❌ Could not find URL for {domain} row {row_num}")

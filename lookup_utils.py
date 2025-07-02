@@ -35,13 +35,13 @@ def lookup_link_in_dsm(link_url, excel_data=None, state=None):
     debug_print(f"Normalized link for lookup: {normalized_link}")
 
     for domain in DOMAINS:
-        debug_print(f"Searching in domain: {domain}")
+        # debug_print(f"Searching in domain: {domain}")
         try:
             df = excel_data.parse(
                 domain.get("worksheet_name", domain["full_name"]),
                 header=domain.get("worksheet_header_row", 4),
             )
-            debug_print(f"Loaded {domain} sheet with {len(df)} rows")
+            # debug_print(f"Loaded {domain} sheet with {len(df)} rows")
 
             # Search through all rows in this domain
             for idx in range(len(df)):
@@ -54,9 +54,9 @@ def lookup_link_in_dsm(link_url, excel_data=None, state=None):
                 # Normalize the existing URL for comparison
                 normalized_existing = existing_url.rstrip("/")
 
-                debug_print(
-                    f"Comparing '{normalized_link}' with '{normalized_existing}'"
-                )
+                # debug_print(
+                #     f"Comparing '{normalized_link}' with '{normalized_existing}'"
+                # )
 
                 # Check for exact match
                 if normalized_link == normalized_existing:

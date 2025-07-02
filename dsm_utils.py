@@ -48,10 +48,7 @@ def load_spreadsheet(path):
 
 
 def get_column_value(sheet_df, excel_row, column_name):
-    debug_print(f"Attempting to extract '{column_name}' from Excel row {excel_row}")
     df_idx = excel_row
-    debug_print(f"Adjusted DataFrame index: {df_idx}")
-    debug_print(f"Columns available: {list(sheet_df.columns)}")
     target_col = next(
         (
             c
@@ -65,9 +62,7 @@ def get_column_value(sheet_df, excel_row, column_name):
         return ""
     try:
         row = sheet_df.iloc[df_idx]
-        debug_print(f"Row values: {row.to_dict()}")
         value = row[target_col]
-        debug_print(f"Extracted {column_name}: {value}")
         return str(value) if pd.notna(value) else ""
     except IndexError:
         debug_print(f"Row index {df_idx} out of range")
