@@ -107,46 +107,27 @@ def get_commands(state):
         cmd_load,
         cmd_help,
         cmd_debug,
+        cmd_clear,
+        cmd_legacy,
+        cmd_lookup,
+        cmd_analyze_links,
     )
 
     return {
-        "set": lambda args: cmd_set(
-            args,
-            state,
-        ),
-        "show": lambda args: cmd_show(
-            args,
-            state,
-        ),
-        "check": lambda args: cmd_check(
-            args,
-            state,
-        ),
-        "migrate": lambda args: cmd_migrate(
-            args,
-            state,
-        ),
-        "load": lambda args: cmd_load(
-            args,
-            state,
-        ),
-        "help": lambda args: cmd_help(
-            args,
-            state,
-        ),
-        "debug": lambda args: cmd_debug(
-            args,
-            state,
-        ),
+        "set": lambda args: cmd_set(args, state),
+        "show": lambda args: cmd_show(args, state),
+        "check": lambda args: cmd_check(args, state),
+        "migrate": lambda args: cmd_migrate(args, state),
+        "load": lambda args: cmd_load(args, state),
+        "help": lambda args: cmd_help(args, state),
+        "debug": lambda args: cmd_debug(args),
+        "clear": lambda args: cmd_clear(args),
+        "legacy": lambda args: cmd_legacy(args),
+        "lookup": lambda args: cmd_lookup(args, state),
+        "links": lambda args: cmd_analyze_links(args, state),
         # Aliases
-        "vars": lambda args: cmd_show(
-            ["variables"],
-            state,
-        ),
-        "ls": lambda args: cmd_show(
-            ["variables"],
-            state,
-        ),
+        "vars": lambda args: cmd_show(["variables"], state),
+        "ls": lambda args: cmd_show(["variables"], state),
         "exit": lambda args: exit(0),
         "quit": lambda args: exit(0),
         "q": lambda args: exit(0),

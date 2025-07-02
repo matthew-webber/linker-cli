@@ -2,6 +2,8 @@
 State management for Linker CLI.
 """
 
+from utils import debug_print
+
 
 class CLIState:
     """Global state manager for the CLI application."""
