@@ -317,3 +317,41 @@ def cmd_legacy(args):
             return
 
     check_page_workflow(state.excel_data)
+
+
+def cmd_lookup(args, state):
+    """Look up a link URL in the DSM spreadsheet to find its new location."""
+    if not args:
+        print("Usage: lookup <url>")
+        print("Example: lookup https://medicine.musc.edu/departments/surgery")
+        return
+
+    if not state.excel_data:
+        from dsm_utils import get_latest_dsm_file, load_spreadsheet
+
+        dsm_file = get_latest_dsm_file()
+        if not dsm_file:
+            print(
+                "❌ No DSM file found. Set DSM_FILE manually or place a dsm-*.xlsx file in the directory."
+            )
+            return
+        try:
+            state.excel_data = load_spreadsheet(dsm_file)
+            state.set_variable("DSM_FILE", dsm_file)
+            print(f"📊 Loaded DSM file: {dsm_file}")
+        except Exception as e:
+            print(f"❌ Failed to load DSM file: {e}")
+            return
+
+    link_url = args[0]
+    from lookup_utils import lookup_link_in_dsm, display_link_lookup_result
+
+    result = lookup_link_in_dsm(link_url, state.excel_data, state)
+    display_link_lookup_result(result)
+
+
+def cmd_analyze_links(args, state):
+    """Analyze all links on the current page for migration requirements."""
+    from lookup_utils import analyze_page_links_for_migration
+
+    analyze_page_links_for_migration(state)
