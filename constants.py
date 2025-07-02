@@ -95,3 +95,31 @@ DOMAINS = [
 DOMAIN_MAPPING = {
     domain["url"]: domain["sitecore_domain_name"] for domain in DOMAINS if domain["url"]
 }
+
+def get_commands(state, debug_print):
+    """Dynamically load and return the COMMANDS dictionary."""
+    from commands import (
+        cmd_set,
+        cmd_show,
+        cmd_check,
+        cmd_migrate,
+        cmd_load,
+        cmd_help,
+        cmd_debug,
+    )
+
+    return {
+        "set": lambda args: cmd_set(args, state, debug_print=debug_print),
+        "show": lambda args: cmd_show(args, state, debug_print=debug_print),
+        "check": lambda args: cmd_check(args, state, debug_print=debug_print),
+        "migrate": lambda args: cmd_migrate(args, state, debug_print=debug_print),
+        "load": lambda args: cmd_load(args, state, debug_print=debug_print),
+        "help": lambda args: cmd_help(args, state, debug_print=debug_print),
+        "debug": lambda args: cmd_debug(args, state, debug_print=debug_print),
+        # Aliases
+        "vars": lambda args: cmd_show(["variables"], state, debug_print=debug_print),
+        "ls": lambda args: cmd_show(["variables"], state, debug_print=debug_print),
+        "exit": lambda args: exit(0),
+        "quit": lambda args: exit(0),
+        "q": lambda args: exit(0),
+    }
