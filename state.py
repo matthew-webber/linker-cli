@@ -14,6 +14,7 @@ class CLIState:
             "DOMAIN": "",
             "ROW": "",
             "SELECTOR": "#main",
+            "SIDEBAR_SELECTOR": "#sidebar-components",
             "DSM_FILE": "",
             "CACHE_FILE": "",
             "PROPOSED_PATH": "",
