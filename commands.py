@@ -288,6 +288,10 @@ def cmd_set(args, state):
     value = " ".join(args[1:])
     if state.set_variable(var_name, value):
         print(f"✅ {var_name} => {value}")
+
+        # Special handling for certain variables
+
+        # Automatically load DSM_FILE if set
         if var_name == "DSM_FILE" and value:
             try:
                 state.excel_data = load_spreadsheet(value)

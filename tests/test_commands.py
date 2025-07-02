@@ -7,7 +7,7 @@ from pathlib import Path
 # Add the project root to sys.path
 sys.path.append(str(Path(__file__).resolve().parent.parent))
 
-from commands import cmd_show, display_domains
+from commands import *
 
 
 @pytest.fixture
@@ -98,3 +98,63 @@ def test_display_domains(capsys):
 
     # Assert that the output matches the expected output
     assert captured.out == expected_output
+
+
+def test_cmd_check(mock_state):
+    """Test the cmd_check function."""
+    cmd_check(["arg1", "arg2"], mock_state)
+    mock_state.list_variables.assert_called_once()
+
+
+def test_cmd_clear(mock_state):
+    """Test the cmd_clear function."""
+    cmd_clear([], mock_state)
+    mock_state.list_variables.assert_called_once()
+
+
+def test_cmd_debug(mock_state):
+    """Test the cmd_debug function."""
+    cmd_debug([], mock_state)
+    mock_state.list_variables.assert_called_once()
+
+
+def test_cmd_help(mock_state):
+    """Test the cmd_help function."""
+    cmd_help([], mock_state)
+    mock_state.list_variables.assert_called_once()
+
+
+def test_cmd_links(mock_state):
+    """Test the cmd_links function."""
+    cmd_links([], mock_state)
+    mock_state.list_variables.assert_called_once()
+
+
+def test_cmd_lookup(mock_state):
+    """Test the cmd_lookup function."""
+    cmd_lookup(["var_name"], mock_state)
+    mock_state.list_variables.assert_called_once()
+
+
+def test_cmd_load(mock_state):
+    """Test the cmd_load function."""
+    cmd_load(["file.xlsx"], mock_state)
+    mock_state.list_variables.assert_called_once()
+
+
+def test_cmd_migrate(mock_state):
+    """Test the cmd_migrate function."""
+    cmd_migrate(["source", "target"], mock_state)
+    mock_state.list_variables.assert_called_once()
+
+
+def test_cmd_set(mock_state):
+    """Test the cmd_set function."""
+    cmd_set(["var_name", "value"], mock_state)
+    mock_state.list_variables.assert_called_once()
+
+
+def test__get_var_description(mock_state):
+    """Test the _get_var_description function."""
+    _get_var_description("var_name", mock_state)
+    mock_state.list_variables.assert_called_once()
