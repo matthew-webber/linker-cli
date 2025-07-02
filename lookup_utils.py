@@ -126,14 +126,22 @@ def display_link_lookup_result(result):
 
 def analyze_page_links_for_migration(state):
     """Analyze all links on the current page and identify which ones need migration lookup."""
+    debug_print("Analyzing page links for migration...")
+    debug_print(f"Current page data: {state.current_page_data}")
     if not state.current_page_data:
         print(
             "❌ No page data available. Run 'check' first to analyze the current page."
         )
         return
 
-    links = state.current_page_data.get("links", [])
-    pdfs = state.current_page_data.get("pdfs", [])
+    links = [
+        *state.current_page_data.get("links", []),
+        *state.current_page_data.get("sidebar_links", []),
+    ]
+    pdfs = [
+        *state.current_page_data.get("pdfs", []),
+        *state.current_page_data.get("sidebar_pdfs", []),
+    ]
 
     if not links and not pdfs:
         print("No links found on the current page.")
