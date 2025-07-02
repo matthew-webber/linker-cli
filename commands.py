@@ -93,6 +93,20 @@ def cmd_help(args, state, debug_print=None):
     print("=" * 60)
 
 
+def _get_var_description(var):
+    """Get description for a variable."""
+    descriptions = {
+        "URL": "Target URL to analyze/migrate",
+        "DOMAIN": "Current spreadsheet domain",
+        "ROW": "Current spreadsheet row number",
+        "SELECTOR": "CSS selector for content extraction",
+        "DSM_FILE": "Path to the DSM Excel file",
+        "CACHE_FILE": "Last cached data file path",
+        "PROPOSED_PATH": "Proposed URL path for migration (e.g. /foo/bar/baz)",
+    }
+    return descriptions.get(var, "User-defined variable")
+
+
 def cmd_set(args, state, debug_print=None):
     if len(args) < 2:
         print("Usage: set <VARIABLE> <value>")
@@ -126,8 +140,7 @@ def cmd_show(args, state, debug_print=None):
             print("❌ No DSM file loaded. Set DSM_FILE first.")
             return
         print(f"\n📋 Available domains ({len(DOMAINS)}):")
-        for i, domain in enumerate(DOMAINS, 1):
-            print(f"  {i:2}. {domain}")
+        display_domains()
     elif target == "page" or target == "data":
         if state.current_page_data:
             display_page_data(state.current_page_data)
@@ -136,6 +149,11 @@ def cmd_show(args, state, debug_print=None):
     else:
         print(f"❌ Unknown show target: {target}")
         print("Available targets: variables, domains, page")
+
+
+def display_domains():
+    for i, domain in enumerate([domain.get("full_name") for domain in DOMAINS], 1):
+        print(f"  {i:2}. {domain}")
 
 
 def cmd_check(args, state, debug_print=None):
