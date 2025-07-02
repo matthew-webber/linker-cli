@@ -25,139 +25,8 @@ from utils import debug_print
 
 DEBUG = True
 
-
-# def parse_command(input_line):
-#     """Parse command line input into command and arguments."""
-#     parts = input_line.strip().split()
-#     if not parts:
-#         return None, []
-
-#     command = parts[0].lower()
-#     args = parts[1:] if len(parts) > 1 else []
-#     return command, args
-
-
-# def execute_command(command, args):
-#     """Execute a command with given arguments."""
-#     if command in COMMANDS:
-#         try:
-#             COMMANDS[command](args)
-#         except KeyboardInterrupt:
-#             print("\n⚠️  Command interrupted")
-#         except Exception as e:
-#             print(f"❌ Command error: {e}")
-#             if DEBUG:
-#                 import traceback
-
-#                 traceback.print_exc()
-#     else:
-#         print(f"❌ Unknown command: {command}")
-#         print("💡 Type 'help' for available commands")
-
-
 CACHE_DIR = Path("migration_cache")
 CACHE_DIR.mkdir(exist_ok=True)
-
-
-def cmd_help(args, state):
-    """Show help information."""
-    if args and args[0] in COMMANDS:
-        cmd_name = args[0]
-        cmd_func = COMMANDS[cmd_name]
-        print(f"\nHelp for '{cmd_name}':")
-        print(cmd_func.__doc__ or "No help available.")
-        return
-
-    print("\n" + "=" * 60)
-    print("LINKER CLI - COMMAND REFERENCE")
-    print("=" * 60)
-    print("State Management:")
-    print("  set <VAR> <value>     Set a variable (URL, DOMAIN, SELECTOR, etc.)")
-    print("  show [target]         Show variables, domains, or page data")
-    print()
-    print("Data Operations:")
-    print("  load <domain> <row>   Load URL from spreadsheet")
-    print("  check                 Analyze the current URL")
-    print("  migrate               Migrate the current URL")
-    print()
-    print("Link Migration:")
-    print("  lookup <url>          Look up where a link should point on the new site")
-    print("  links                 Analyze all links on current page for migration")
-    print()
-    print("Utility:")
-    print("  help [command]        Show this help or help for specific command")
-    print("  debug [on|off]        Toggle debug output")
-    print("  clear                 Clear the screen")
-    print("  exit, quit            Exit the application")
-    print()
-    print("Variables:")
-    for var in state.variables.keys():
-        print(f"  {var:12} - {_get_var_description(var)}")
-    print("=" * 60)
-
-
-def _get_var_description(var):
-    """Get description for a variable."""
-    descriptions = {
-        "URL": "Target URL to analyze/migrate",
-        "DOMAIN": "Current spreadsheet domain",
-        "ROW": "Current spreadsheet row number",
-        "SELECTOR": "CSS selector for content extraction",
-        "DSM_FILE": "Path to the DSM Excel file",
-        "CACHE_FILE": "Last cached data file path",
-        "PROPOSED_PATH": "Proposed URL path for migration (e.g. /foo/bar/baz)",
-    }
-    return descriptions.get(var, "User-defined variable")
-
-
-def cmd_set(args, state):
-    if len(args) < 2:
-        print("Usage: set <VARIABLE> <value>")
-        print("Available variables:")
-        for var in state.variables.keys():
-            print(f"  {var}")
-        return
-    var_name = args[0].upper()
-    value = " ".join(args[1:])
-    if state.set_variable(var_name, value):
-        print(f"✅ {var_name} => {value}")
-        if var_name == "DSM_FILE" and value:
-            try:
-                state.excel_data = load_spreadsheet(valuet)
-                print(f"📊 DSM file loaded successfully")
-            except Exception as e:
-                print(f"❌ Failed to load DSM file: {e}")
-    else:
-        print(f"❌ Unknown variable: {var_name}")
-
-
-def cmd_show(args, state):
-    if not args:
-        state.list_variables()
-        return
-    target = args[0].lower()
-    if target == "variables" or target == "vars":
-        state.list_variables()
-    elif target == "domains":
-        if not state.excel_data:
-            print("❌ No DSM file loaded. Set DSM_FILE first.")
-            return
-        print(f"\n📋 Available domains ({len(DOMAINS)}):")
-        display_domains()
-    elif target == "page" or target == "data":
-        if state.current_page_data:
-            display_page_data(state.current_page_data)
-        else:
-            print("❌ No page data loaded. Run 'check' first.")
-    else:
-        print(f"❌ Unknown show target: {target}")
-        print("Available targets: variables, domains, page")
-
-
-def display_domains():
-    for i, domain in enumerate([domain.get("full_name") for domain in DOMAINS], 1):
-        print(f"  {i:2}. {domain}")
-
 
 def cmd_check(args, state):
     url = state.get_variable("URL")
@@ -197,15 +66,99 @@ def cmd_check(args, state):
     print("💡 Use 'show page' to see detailed results")
 
 
-def cmd_migrate(args, state):
-    url = state.get_variable("URL")
+def cmd_clear(args):
+    """Clear the screen."""
+    os.system("clear" if os.name != "nt" else "cls")
 
-    if not url:
-        print("❌ No URL set. Use 'set URL <value>' first.")
+def cmd_debug(args):
+    """Toggle debug mode."""
+    global DEBUG
+    if not args:
+        DEBUG = not DEBUG
+    else:
+        arg = args[0].lower()
+        if arg in ["on", "true", "1", "yes"]:
+            DEBUG = True
+        elif arg in ["off", "false", "0", "no"]:
+            DEBUG = False
+        else:
+            print("Usage: debug [on|off]")
+            return
+
+    print(f"🐛 Debug mode: {'ON' if DEBUG else 'OFF'}")
+
+
+def cmd_help(args, state):
+    """Show help information."""
+    if args and args[0] in COMMANDS:
+        cmd_name = args[0]
+        cmd_func = COMMANDS[cmd_name]
+        print(f"\nHelp for '{cmd_name}':")
+        print(cmd_func.__doc__ or "No help available.")
         return
 
-    migrate(state, url=url)
+    print("\n" + "=" * 60)
+    print("LINKER CLI - COMMAND REFERENCE")
+    print("=" * 60)
+    print("State Management:")
+    print("  set <VAR> <value>     Set a variable (URL, DOMAIN, SELECTOR, etc.)")
+    print("  show [target]         Show variables, domains, or page data")
+    print()
+    print("Data Operations:")
+    print("  load <domain> <row>   Load URL from spreadsheet")
+    print("  check                 Analyze the current URL")
+    print("  migrate               Migrate the current URL")
+    print()
+    print("Link Migration:")
+    print("  lookup <url>          Look up where a link should point on the new site")
+    print("  links                 Analyze all links on current page for migration")
+    print()
+    print("Utility:")
+    print("  help [command]        Show this help or help for specific command")
+    print("  debug [on|off]        Toggle debug output")
+    print("  clear                 Clear the screen")
+    print("  exit, quit            Exit the application")
+    print()
+    print("Variables:")
+    for var in state.variables.keys():
+        print(f"  {var:12} - {_get_var_description(var)}")
+    print("=" * 60)
 
+def cmd_links(args, state):
+    """Analyze all links on the current page for migration requirements."""
+    from lookup_utils import analyze_page_links_for_migration
+
+    analyze_page_links_for_migration(state)
+
+def cmd_lookup(args, state):
+    """Look up a link URL in the DSM spreadsheet to find its new location."""
+    if not args:
+        print("Usage: lookup <url>")
+        print("Example: lookup https://medicine.musc.edu/departments/surgery")
+        return
+
+    if not state.excel_data:
+        from dsm_utils import get_latest_dsm_file, load_spreadsheet
+
+        dsm_file = get_latest_dsm_file()
+        if not dsm_file:
+            print(
+                "❌ No DSM file found. Set DSM_FILE manually or place a dsm-*.xlsx file in the directory."
+            )
+            return
+        try:
+            state.excel_data = load_spreadsheet(dsm_file)
+            state.set_variable("DSM_FILE", dsm_file)
+            print(f"📊 Loaded DSM file: {dsm_file}")
+        except Exception as e:
+            print(f"❌ Failed to load DSM file: {e}")
+            return
+
+    link_url = args[0]
+    from lookup_utils import lookup_link_in_dsm, display_link_lookup_result
+
+    result = lookup_link_in_dsm(link_url, state.excel_data, state)
+    display_link_lookup_result(result)
 
 def cmd_load(args, state):
     """Handle the 'load' command for loading URLs from spreadsheet."""
@@ -283,80 +236,85 @@ def cmd_load(args, state):
         debug_print(f"Full error: {e}")
 
 
-def cmd_debug(args):
-    """Toggle debug mode."""
-    global DEBUG
-    if not args:
-        DEBUG = not DEBUG
+def cmd_migrate(args, state):
+    url = state.get_variable("URL")
+
+    if not url:
+        print("❌ No URL set. Use 'set URL <value>' first.")
+        return
+
+    migrate(state, url=url)
+
+
+
+def cmd_set(args, state):
+    if len(args) < 2:
+        print("Usage: set <VARIABLE> <value>")
+        print("Available variables:")
+        for var in state.variables.keys():
+            print(f"  {var}")
+        return
+    var_name = args[0].upper()
+    value = " ".join(args[1:])
+    if state.set_variable(var_name, value):
+        print(f"✅ {var_name} => {value}")
+        if var_name == "DSM_FILE" and value:
+            try:
+                state.excel_data = load_spreadsheet(valuet)
+                print(f"📊 DSM file loaded successfully")
+            except Exception as e:
+                print(f"❌ Failed to load DSM file: {e}")
     else:
-        arg = args[0].lower()
-        if arg in ["on", "true", "1", "yes"]:
-            DEBUG = True
-        elif arg in ["off", "false", "0", "no"]:
-            DEBUG = False
-        else:
-            print("Usage: debug [on|off]")
-            return
-
-    print(f"🐛 Debug mode: {'ON' if DEBUG else 'OFF'}")
+        print(f"❌ Unknown variable: {var_name}")
 
 
-def cmd_clear(args):
-    """Clear the screen."""
-    os.system("clear" if os.name != "nt" else "cls")
-
-
-def cmd_legacy(args):
-    """Access the legacy workflow system."""
-    dsm_file = state.get_variable("DSM_FILE") or get_latest_dsm_file()
-    if not dsm_file:
-        print("❌ No DSM file found. Set DSM_FILE first.")
-        return
-
-    if not state.excel_data:
-        try:
-            state.excel_data = load_spreadsheet(dsm_file)
-            state.set_variable("DSM_FILE", dsm_file)
-        except Exception as e:
-            print(f"❌ Failed to load DSM file: {e}")
-            return
-
-    check_page_workflow(state.excel_data)
-
-
-def cmd_lookup(args, state):
-    """Look up a link URL in the DSM spreadsheet to find its new location."""
+def cmd_show(args, state):
     if not args:
-        print("Usage: lookup <url>")
-        print("Example: lookup https://medicine.musc.edu/departments/surgery")
+        state.list_variables()
         return
-
-    if not state.excel_data:
-        from dsm_utils import get_latest_dsm_file, load_spreadsheet
-
-        dsm_file = get_latest_dsm_file()
-        if not dsm_file:
-            print(
-                "❌ No DSM file found. Set DSM_FILE manually or place a dsm-*.xlsx file in the directory."
-            )
+    target = args[0].lower()
+    if target == "variables" or target == "vars":
+        state.list_variables()
+    elif target == "domains":
+        if not state.excel_data:
+            print("❌ No DSM file loaded. Set DSM_FILE first.")
             return
-        try:
-            state.excel_data = load_spreadsheet(dsm_file)
-            state.set_variable("DSM_FILE", dsm_file)
-            print(f"📊 Loaded DSM file: {dsm_file}")
-        except Exception as e:
-            print(f"❌ Failed to load DSM file: {e}")
-            return
-
-    link_url = args[0]
-    from lookup_utils import lookup_link_in_dsm, display_link_lookup_result
-
-    result = lookup_link_in_dsm(link_url, state.excel_data, state)
-    display_link_lookup_result(result)
+        print(f"\n📋 Available domains ({len(DOMAINS)}):")
+        display_domains()
+    elif target == "page" or target == "data":
+        if state.current_page_data:
+            display_page_data(state.current_page_data)
+        else:
+            print("❌ No page data loaded. Run 'check' first.")
+    else:
+        print(f"❌ Unknown show target: {target}")
+        print("Available targets: variables, domains, page")
 
 
-def cmd_analyze_links(args, state):
-    """Analyze all links on the current page for migration requirements."""
-    from lookup_utils import analyze_page_links_for_migration
+def _get_var_description(var):
+    """Get description for a variable."""
+    descriptions = {
+        "URL": "Target URL to analyze/migrate",
+        "DOMAIN": "Current spreadsheet domain",
+        "ROW": "Current spreadsheet row number",
+        "SELECTOR": "CSS selector for content extraction",
+        "DSM_FILE": "Path to the DSM Excel file",
+        "CACHE_FILE": "Last cached data file path",
+        "PROPOSED_PATH": "Proposed URL path for migration (e.g. /foo/bar/baz)",
+    }
+    return descriptions.get(var, "User-defined variable")
 
-    analyze_page_links_for_migration(state)
+def display_domains():
+    for i, domain in enumerate([domain.get("full_name") for domain in DOMAINS], 1):
+        print(f"  {i:2}. {domain}")
+
+
+
+
+
+
+
+
+
+
+
