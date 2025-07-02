@@ -6,7 +6,7 @@ from migrate_hierarchy import print_hierarchy, print_proposed_hierarchy
 from link_mapping import launch_link_mapping
 
 
-def migrate(state, url=None, debug_print=None):
+def migrate(state, url=None):
     url = url or state.get_variable("URL")
     if not url:
         print("❌ No URL set. Use 'set URL <value>' first.")

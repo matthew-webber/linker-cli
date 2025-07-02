@@ -19,7 +19,7 @@ class CLIState:
         self.excel_data = None
         self.current_page_data = None
 
-    def set_variable(self, name, value, debug_print=None):
+    def set_variable(self, name, value):
         name = name.upper()
         if name in self.variables:
             old_value = self.variables[name]

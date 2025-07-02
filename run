@@ -34,8 +34,9 @@ from migration import migrate
 import requests
 from bs4 import BeautifulSoup
 
+from utils import debug_print
+
 # Toggle debugging at top level (default: on)
-DEBUG = True
 warnings.filterwarnings("ignore", category=UserWarning, module="openpyxl")
 
 
@@ -97,21 +98,16 @@ class CLIState:
 
 state = CLIState()
 
-COMMANDS = get_commands(state, debug_print=DEBUG)
+COMMANDS = get_commands(state)
 
 # Constants for Excel parsing
 HEADER_ROW = 3  # zero-based index where actual header resides
-ROW_OFFSET = HEADER_ROW + 2  # number of rows before data starts
+# ROW_OFFSET = HEADER_ROW + 2  # number of rows before data starts
 
 # Directory where DSM files live
 DSM_DIR = Path(".")
 CACHE_DIR = Path("migration_cache")
 CACHE_DIR.mkdir(exist_ok=True)
-
-
-def debug_print(msg):
-    if DEBUG:
-        print(f"DEBUG: {msg}")
 
 
 def get_latest_dsm_file():
@@ -176,7 +172,7 @@ def get_column_value(sheet_df, excel_row, column_name):
     debug_print(f"Attempting to extract '{column_name}' from Excel row {excel_row}")
 
     # Determine DataFrame index
-    df_idx = excel_row - ROW_OFFSET
+    df_idx = excel_row
     debug_print(f"Adjusted DataFrame index: {df_idx}")
 
     # Find column name case-insensitively
@@ -653,18 +649,15 @@ def lookup_link_in_dsm(link_url, excel_data=None):
     normalized_link = link_url.rstrip("/")
     debug_print(f"Normalized link for lookup: {normalized_link}")
 
-    # Search through all domain sheets
-    domains = list_domains(excel_data)
-
-    for domain in domains:
+    for domain in DOMAINS:
         debug_print(f"Searching in domain: {domain}")
         try:
-            df = excel_data.parse(domain, header=HEADER_ROW)
+            df = excel_data.parse(domain, header=domain.get("worksheet_header_row", 4))
             debug_print(f"Loaded {domain} sheet with {len(df)} rows")
 
             # Search through all rows in this domain
             for idx in range(len(df)):
-                excel_row = idx + ROW_OFFSET  # Convert back to Excel row number
+                excel_row = idx
                 existing_url = get_existing_url(df, excel_row)
 
                 if not existing_url:
@@ -829,12 +822,6 @@ def cmd_analyze_links(args):
     analyze_page_links_for_migration()
 
 
-# Command registry, now passing state and debug_print as needed
-def debug_print(msg):
-    if DEBUG:
-        print(f"DEBUG: {msg}")
-
-
 def parse_command(input_line):
     """Parse command line input into command and arguments."""
     parts = input_line.strip().split()
@@ -865,7 +852,6 @@ def execute_command(command, args):
 
 
 def main():
-    global DEBUG
     parser = argparse.ArgumentParser(
         description="Linker CLI POC - State-based Framework"
     )

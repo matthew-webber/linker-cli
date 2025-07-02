@@ -21,6 +21,9 @@ import json
 from pathlib import Path
 
 from constants import DOMAINS
+from utils import debug_print
+
+DEBUG = True
 
 
 # def parse_command(input_line):
@@ -34,7 +37,7 @@ from constants import DOMAINS
 #     return command, args
 
 
-# def execute_command(command, args, DEBUG):
+# def execute_command(command, args):
 #     """Execute a command with given arguments."""
 #     if command in COMMANDS:
 #         try:
@@ -56,7 +59,7 @@ CACHE_DIR = Path("migration_cache")
 CACHE_DIR.mkdir(exist_ok=True)
 
 
-def cmd_help(args, state, debug_print=None):
+def cmd_help(args, state):
     """Show help information."""
     if args and args[0] in COMMANDS:
         cmd_name = args[0]
@@ -107,7 +110,7 @@ def _get_var_description(var):
     return descriptions.get(var, "User-defined variable")
 
 
-def cmd_set(args, state, debug_print=None):
+def cmd_set(args, state):
     if len(args) < 2:
         print("Usage: set <VARIABLE> <value>")
         print("Available variables:")
@@ -120,7 +123,7 @@ def cmd_set(args, state, debug_print=None):
         print(f"✅ {var_name} => {value}")
         if var_name == "DSM_FILE" and value:
             try:
-                state.excel_data = load_spreadsheet(value, debug_print=debug_print)
+                state.excel_data = load_spreadsheet(valuet)
                 print(f"📊 DSM file loaded successfully")
             except Exception as e:
                 print(f"❌ Failed to load DSM file: {e}")
@@ -128,7 +131,7 @@ def cmd_set(args, state, debug_print=None):
         print(f"❌ Unknown variable: {var_name}")
 
 
-def cmd_show(args, state, debug_print=None):
+def cmd_show(args, state):
     if not args:
         state.list_variables()
         return
@@ -156,7 +159,7 @@ def display_domains():
         print(f"  {i:2}. {domain}")
 
 
-def cmd_check(args, state, debug_print=None):
+def cmd_check(args, state):
     url = state.get_variable("URL")
     selector = state.get_variable("SELECTOR")
     if not url:
@@ -167,7 +170,7 @@ def cmd_check(args, state, debug_print=None):
     spinner = Spinner(f"🔄 Please wait...")
     spinner.start()
     try:
-        data = retrieve_page_data(url, selector, debug_print=debug_print)
+        data = retrieve_page_data(url, selector)
     except Exception as e:
         print(f"❌ Error during page check: {e}")
         if debug_print:
@@ -194,15 +197,15 @@ def cmd_check(args, state, debug_print=None):
     print("💡 Use 'show page' to see detailed results")
 
 
-def cmd_migrate(args, state, debug_print=None):
+def cmd_migrate(args, state):
     url = state.get_variable("URL")
     if not url:
         print("❌ No URL set. Use 'set URL <value>' first.")
         return
-    migrate(state, url=url, debug_print=debug_print)
+    migrate(state, url=urlt)
 
 
-def cmd_load(args, state, debug_print=None):
+def cmd_load(args, state):
     """Handle the 'load' command for loading URLs from spreadsheet."""
 
     # Help text
@@ -232,7 +235,10 @@ def cmd_load(args, state, debug_print=None):
         return
 
     # Find the actual domain name with case-insensitive lookup
-    domain = next((d for d in DOMAINS if d.lower() == user_domain.lower()), None)
+    domain = next(
+        (d for d in DOMAINS if d.get("full_name", "").lower() == user_domain.lower()),
+        None,
+    )
 
     if not domain:
         print(f"❌ Domain '{user_domain}' not found.")
@@ -241,9 +247,14 @@ def cmd_load(args, state, debug_print=None):
             print(f"  {i:2}. {d}")
         return
 
+    print(f"DOMAIN DOMAIN", domain)
+
     # Load the domain sheet
     try:
-        df = state.excel_data.parse(sheet_name=domain, header=HEADER_ROW)
+        df = state.excel_data.parse(
+            sheet_name=domain.get("full_name"),
+            header=domain.get("worksheet_header_row", 4),
+        )
         url = get_existing_url(df, row_num)
         proposed = get_proposed_url(df, row_num)
 
