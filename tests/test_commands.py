@@ -11,6 +11,12 @@ from commands import *
 
 
 @pytest.fixture
+def mock_cache_page_data(monkeypatch):
+    """Prevent saving to file."""
+    monkeypatch.setattr("commands.cache_page_data", MagicMock())
+
+
+@pytest.fixture
 def mock_state():
     """Fixture to create a mock state object."""
     state = MagicMock()
@@ -110,7 +116,7 @@ def test_display_domains(capsys):
     assert captured.out == expected_output
 
 
-def test_cmd_check_missing_required_vars(monkeypatch, mock_state, capsys, mock_spinner):
+def test_cmd_check_missing_required_vars(mock_state, capsys, mock_spinner):
     mock_state.get_variable.return_value = None
     mock_state.validate_required_vars.return_value = (["URL", "SELECTOR"], [])
 
@@ -121,9 +127,7 @@ def test_cmd_check_missing_required_vars(monkeypatch, mock_state, capsys, mock_s
     mock_spinner.start.assert_not_called()
 
 
-def test_cmd_check_given_data_retrieval_error(
-    monkeypatch, mock_state, capsys, mock_spinner
-):
+def test_cmd_check_given_data_retrieval_error(mock_state, capsys, mock_spinner):
     mock_state.get_variable.return_value = "http://example.com"
     mock_state.get_variable.side_effect = lambda x: (
         "invalid_selector" if x == "SELECTOR" else "false"
@@ -142,6 +146,28 @@ def test_cmd_check_given_data_retrieval_error(
     mock_spinner.start.assert_called_once()
     mock_spinner.stop.assert_called_once()
     assert mock_state.current_page_data is None
+
+
+def test_cmd_check_valid_data_retrieval(
+    monkeypatch, mock_state, capsys, mock_spinner, mock_cache_page_data
+):
+    mock_state.get_variable.return_value = "http://example.com"
+    mock_state.get_variable.side_effect = lambda x: (
+        "#main" if x == "SELECTOR" else "false"
+    )
+
+    # monkeypatch.setattr("commands.retrieve_page_data", lambda *args, **kwargs: {})
+
+    with patch("commands.retrieve_page_data", return_value={"key": "value"}):
+        cmd_check([], mock_state)
+
+    captured = capsys.readouterr()
+
+    # Spinner should have started and stopped
+    mock_spinner.start.assert_called_once()
+    mock_spinner.stop.assert_called_once()
+    assert "💡 Use 'show page' to see detailed results" in captured.out
+    assert mock_state.current_page_data == {"key": "value"}
 
 
 def test_cmd_debug(mock_state):
