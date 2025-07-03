@@ -61,19 +61,18 @@ def cmd_check(args, state):
 
     state.current_page_data = data
 
-    url_safe = re.sub(r"[^\w\-_.]", "_", url)[:50]
-    cache_file = CACHE_DIR / f"page_check_{url_safe}.json"
-
-    with open(cache_file, "w", encoding="utf-8") as f:
-        json.dump(data, f, indent=2, ensure_ascii=False)
-
-    state.set_variable("CACHE_FILE", str(cache_file))
-    print(f"✅ Data cached to {cache_file}")
+    cache_page_data(state, url, data)
 
     if "error" in data:
         print(f"❌ Failed to extract data: {data['error']}")
         return
 
+    generate_summary_report(include_sidebar, data)
+
+    print("💡 Use 'show page' to see detailed results")
+
+
+def generate_summary_report(include_sidebar, data):
     links_count = len(data.get("links", []))
     pdfs_count = len(data.get("pdfs", []))
     embeds_count = len(data.get("embeds", []))
@@ -104,7 +103,16 @@ def cmd_check(args, state):
             f"📊 Summary: {total_links} links, {total_pdfs} PDFs, {total_embeds} embeds found"
         )
 
-    print("💡 Use 'show page' to see detailed results")
+
+def cache_page_data(state, url, data):
+    sanitized_url = re.sub(r"[^\w\-_.]", "_", url)[:50]
+    cache_file = CACHE_DIR / f"page_check_{sanitized_url}.json"
+
+    with open(cache_file, "w", encoding="utf-8") as f:
+        json.dump(data, f, indent=2, ensure_ascii=False)
+
+    state.set_variable("CACHE_FILE", str(cache_file))
+    print(f"✅ Data cached to {cache_file}")
 
 
 def cmd_clear(args):
