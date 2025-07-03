@@ -2,6 +2,7 @@
 State management for Linker CLI.
 """
 
+import re
 from utils import debug_print
 
 
@@ -21,6 +22,13 @@ class CLIState:
         }
         self.excel_data = None
         self.current_page_data = None
+
+        self.valid_variable_formats = {
+            "URL": r"^https?://",
+            "INCLUDE_SIDEBAR": r"^(true|false)$",
+            "DSM_FILE": r"^[\w\-. ]+\.xlsx$",
+            "CACHE_FILE": r"^[\w\-. ]+\.json$",
+        }
 
     def set_variable(self, name, value):
         name = name.upper()
@@ -53,7 +61,22 @@ class CLIState:
 
     def validate_required_vars(self, required_vars):
         missing = []
+        invalid = []
         for var in required_vars:
             if not self.get_variable(var):
                 missing.append(var)
-        return missing
+
+            if var in self.valid_variable_formats:
+                if not re.match(
+                    self.valid_variable_formats[var], self.get_variable(var)
+                ):
+                    invalid.append(var)
+
+        if missing:
+            print(f"❌ Missing required variables: {', '.join(missing)}")
+        if invalid:
+            print(f"❌ Invalid variables: {', '.join(invalid)}")
+        else:
+            debug_print("All required variables are set.")
+        
+        return missing, invalid
