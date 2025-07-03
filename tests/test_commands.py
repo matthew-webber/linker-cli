@@ -15,9 +15,19 @@ def mock_state():
     """Fixture to create a mock state object."""
     state = MagicMock()
     state.list_variables = MagicMock()
+    state.validate_required_vars = MagicMock(return_value=([], []))
+
     state.excel_data = None
     state.current_page_data = None
+
     return state
+
+
+@pytest.fixture
+def mock_spinner(monkeypatch):
+    spinner = MagicMock(spec=["start", "stop"])
+    monkeypatch.setattr("commands.Spinner", lambda x: spinner)
+    return spinner
 
 
 def test_cmd_show_variables(mock_state):
@@ -100,16 +110,38 @@ def test_display_domains(capsys):
     assert captured.out == expected_output
 
 
-def test_cmd_check(mock_state):
-    """Test the cmd_check function."""
-    cmd_check(["arg1", "arg2"], mock_state)
-    mock_state.list_variables.assert_called_once()
+def test_cmd_check_missing_required_vars(monkeypatch, mock_state, capsys, mock_spinner):
+    mock_state.get_variable.return_value = None
+    mock_state.validate_required_vars.return_value = (["URL", "SELECTOR"], [])
+
+    cmd_check([], mock_state)
+    captured = capsys.readouterr()
+
+    # Spinner should not have been called
+    mock_spinner.start.assert_not_called()
 
 
-def test_cmd_clear(mock_state):
-    """Test the cmd_clear function."""
-    cmd_clear([], mock_state)
-    mock_state.list_variables.assert_called_once()
+def test_cmd_check_given_data_retrieval_error(
+    monkeypatch, mock_state, capsys, mock_spinner
+):
+    mock_state.get_variable.return_value = "http://example.com"
+    mock_state.get_variable.side_effect = lambda x: (
+        "invalid_selector" if x == "SELECTOR" else "false"
+    )
+
+    with patch(
+        "commands.retrieve_page_data",
+        side_effect=Exception("Data retrieval error test"),
+    ):
+        cmd_check([], mock_state)
+
+    captured = capsys.readouterr()
+
+    # error thrown + spinner started and stopped + current_page_data not set
+    assert "Data retrieval error test" in captured.out
+    mock_spinner.start.assert_called_once()
+    mock_spinner.stop.assert_called_once()
+    assert mock_state.current_page_data is None
 
 
 def test_cmd_debug(mock_state):
@@ -150,8 +182,8 @@ def test_cmd_migrate(mock_state):
 
 def test_cmd_set_incomplete_args(mock_state):
     """Test the cmd_set function with incomplete arguments."""
-    _get_var_description("var_name", mock_state)
-    mock_state.list_variables.assert_called_once()
+    cmd_set("", mock_state)
+    print_help_for_command.assert_called_once()
 
 
 def test__get_var_description(mock_state):

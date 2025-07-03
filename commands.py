@@ -30,18 +30,26 @@ CACHE_DIR.mkdir(exist_ok=True)
 
 
 def cmd_check(args, state):
+    # TODO add ability to run check with args like --url, --selector, --include-sidebar
     url = state.get_variable("URL")
     selector = state.get_variable("SELECTOR")
-    include_sidebar = state.get_variable("INCLUDE_SIDEBAR").lower() == "true"
-    if not url:
-        print("❌ No URL set. Use 'set URL <value>' first.")
+    include_sidebar = state.get_variable("INCLUDE_SIDEBAR")
+
+    # Validate required variables
+    required_vars = ["URL", "SELECTOR"]
+    missing_vars, invalid_vars = state.validate_required_vars(required_vars)
+
+    if missing_vars or invalid_vars:
         return
+
     print(f"🔍 Checking page: {url}")
     print(f"🎯 Using selector: {selector}")
     if include_sidebar:
         print("🔲 Including sidebar content")
+
     spinner = Spinner(f"🔄 Please wait...")
     spinner.start()
+
     try:
         data = retrieve_page_data(url, selector, include_sidebar)
     except Exception as e:
@@ -50,16 +58,22 @@ def cmd_check(args, state):
         return
     finally:
         spinner.stop()
+
     state.current_page_data = data
+
     url_safe = re.sub(r"[^\w\-_.]", "_", url)[:50]
     cache_file = CACHE_DIR / f"page_check_{url_safe}.json"
+
     with open(cache_file, "w", encoding="utf-8") as f:
         json.dump(data, f, indent=2, ensure_ascii=False)
+
     state.set_variable("CACHE_FILE", str(cache_file))
     print(f"✅ Data cached to {cache_file}")
+
     if "error" in data:
         print(f"❌ Failed to extract data: {data['error']}")
         return
+
     links_count = len(data.get("links", []))
     pdfs_count = len(data.get("pdfs", []))
     embeds_count = len(data.get("embeds", []))
