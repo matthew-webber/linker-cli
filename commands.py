@@ -279,11 +279,7 @@ def cmd_migrate(args, state):
 
 def cmd_set(args, state):
     if len(args) < 2:
-        print("Usage: set <VARIABLE> <value>")
-        print("Available variables:")
-        for var in state.variables.keys():
-            print(f"  {var}")
-        return
+        return print_help_for_command("set", state)
     var_name = args[0].upper()
     value = " ".join(args[1:])
     if state.set_variable(var_name, value):
@@ -300,6 +296,17 @@ def cmd_set(args, state):
                 print(f"❌ Failed to load DSM file: {e}")
     else:
         print(f"❌ Unknown variable: {var_name}")
+
+
+def print_help_for_command(command, state):
+    # switch case for command help
+    match command:
+        case "set":
+            print("Usage: set <VARIABLE> <value>")
+            print("Available variables:")
+            for var in state.variables.keys():
+                print(f"  {var}")
+            return
 
 
 def cmd_show(args, state):

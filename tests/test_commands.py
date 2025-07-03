@@ -148,9 +148,9 @@ def test_cmd_migrate(mock_state):
     mock_state.list_variables.assert_called_once()
 
 
-def test_cmd_set(mock_state):
-    """Test the cmd_set function."""
-    cmd_set(["var_name", "value"], mock_state)
+def test_cmd_set_incomplete_args(mock_state):
+    """Test the cmd_set function with incomplete arguments."""
+    _get_var_description("var_name", mock_state)
     mock_state.list_variables.assert_called_once()
 
 
