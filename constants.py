@@ -110,6 +110,7 @@ def get_commands(state):
         cmd_migrate,
         cmd_report,
         cmd_set,
+        cmd_sidebar,
         cmd_show,
     )
 
@@ -124,6 +125,7 @@ def get_commands(state):
         "migrate": lambda args: cmd_migrate(args, state),
         "report": lambda args: cmd_report(args, state),
         "set": lambda args: cmd_set(args, state),
+        "sidebar": lambda args: cmd_sidebar(args, state),
         "show": lambda args: cmd_show(args, state),
         # Aliases
         "vars": lambda args: cmd_show(["variables"], state),

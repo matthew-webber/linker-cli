@@ -368,6 +368,26 @@ def cmd_debug(args, state):
     sync_debug_with_state(state)  # Sync the cached value
     print(f"🐛 Debug mode: {'ON' if new_debug else 'OFF'}")
 
+def cmd_sidebar(args, state):
+    """Toggle sidebar inclusion in page extraction."""
+    current_value = state.get_variable("INCLUDE_SIDEBAR").lower() in ["true", "1", "yes"]
+
+    if not args:
+        # Toggle current state
+        new_value = not current_value
+    else:
+        arg = args[0].lower()
+        if arg in ["on", "true", "1", "yes"]:
+            new_value = True
+        elif arg in ["off", "false", "0", "no"]:
+            new_value = False
+        else:
+            print("Usage: sidebar [on|off]")
+            return
+
+    state.set_variable("INCLUDE_SIDEBAR", "true" if new_value else "false")
+    print(f"🔲 Sidebar inclusion: {'ON' if new_value else 'OFF'}")
+
 
 def cmd_help(args, state):
     """Show help information."""
