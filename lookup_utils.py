@@ -6,6 +6,7 @@ from urllib.parse import urlparse
 from constants import DOMAINS, DOMAIN_MAPPING
 from dsm_utils import get_existing_url, get_proposed_url
 from utils import debug_print
+from migrate_hierarchy import format_hierarchy
 
 
 def lookup_link_in_dsm(link_url, excel_data=None, state=None):
@@ -175,10 +176,15 @@ def analyze_page_links_for_migration(state):
         result = lookup_link_in_dsm(href, state.excel_data, state)
         if result["found"]:
             print(f"    ✅ Found in DSM - {result['domain']} row {result['row']}")
-            print(f"    🎯 New path: {result['proposed_hierarchy']['root']}", end="")
-            for segment in result["proposed_hierarchy"]["segments"]:
-                print(f" → {segment}", end="")
-            print()
+            # use shared formatting for new path
+            path_str = format_hierarchy(
+                result["proposed_hierarchy"]["root"],
+                result["proposed_hierarchy"]["segments"],
+            )
+            for idx, line in enumerate(path_str.split("\n")):
+                # Prefix first line with 🎯, subsequent lines align
+                prefix = "    🏠 " if idx == 0 else "       "
+                print(f"{prefix} {line}")
         else:
             print(f"    ❌ Not found in DSM - manual migration required")
         print()
