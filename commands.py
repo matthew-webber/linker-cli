@@ -259,6 +259,9 @@ def cmd_check(args, state):
     selector = state.get_variable("SELECTOR")
     include_sidebar = state.get_variable("INCLUDE_SIDEBAR")
 
+    # transform string to boolean
+    include_sidebar = include_sidebar.lower() in ["true", "1", "yes"]
+
     # Validate required variables
     required_vars = ["URL", "SELECTOR"]
     missing_vars, invalid_vars = state.validate_required_vars(required_vars)
