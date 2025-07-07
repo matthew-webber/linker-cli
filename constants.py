@@ -108,6 +108,7 @@ def get_commands(state):
         cmd_load,
         cmd_lookup,
         cmd_migrate,
+        cmd_report,
         cmd_set,
         cmd_show,
     )
@@ -121,6 +122,7 @@ def get_commands(state):
         "load": lambda args: cmd_load(args, state),
         "lookup": lambda args: cmd_lookup(args, state),
         "migrate": lambda args: cmd_migrate(args, state),
+        "report": lambda args: cmd_report(args, state),
         "set": lambda args: cmd_set(args, state),
         "show": lambda args: cmd_show(args, state),
         # Aliases

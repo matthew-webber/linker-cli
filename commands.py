@@ -3,6 +3,9 @@ Command handlers for Linker CLI.
 """
 
 import os
+import sys
+from io import StringIO
+from contextlib import redirect_stdout
 
 # from state import CLIState
 from dsm_utils import (
@@ -27,6 +30,227 @@ DEBUG = True
 
 CACHE_DIR = Path("migration_cache")
 CACHE_DIR.mkdir(exist_ok=True)
+
+
+def _capture_output(func, *args, **kwargs):
+    """Capture stdout from a function call and return it as a string."""
+    old_stdout = sys.stdout
+    sys.stdout = captured_output = StringIO()
+    try:
+        func(*args, **kwargs)
+        return captured_output.getvalue()
+    finally:
+        sys.stdout = old_stdout
+
+
+def _capture_migrate_page_mapping_output(state):
+    """Capture the output from migrate page mapping functionality."""
+    from migrate_hierarchy import print_hierarchy, print_proposed_hierarchy
+
+    url = state.get_variable("URL")
+    if not url:
+        return "❌ No URL set for page mapping."
+
+    output = StringIO()
+    old_stdout = sys.stdout
+    sys.stdout = output
+
+    try:
+        print_hierarchy(url)
+        proposed = state.get_variable("PROPOSED_PATH")
+        if proposed:
+            print_proposed_hierarchy(url, proposed)
+        else:
+            print("No proposed path set. Use 'set PROPOSED_PATH <path>' to set it.")
+    finally:
+        sys.stdout = old_stdout
+
+    return output.getvalue()
+
+
+def _generate_html_report(domain, row, show_page_output, migrate_output, links_output):
+    """Generate HTML report from captured outputs."""
+    html_template = """
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Migration Report - {domain} Row {row}</title>
+    <style>
+        body {{
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            line-height: 1.6;
+            margin: 0;
+            padding: 20px;
+            background-color: #f5f5f5;
+        }}
+        .container {{
+            max-width: 1200px;
+            margin: 0 auto;
+            background: white;
+            border-radius: 8px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+            overflow: hidden;
+        }}
+        .header {{
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            padding: 30px;
+            text-align: center;
+        }}
+        .header h1 {{
+            margin: 0;
+            font-size: 2em;
+        }}
+        .header p {{
+            margin: 10px 0 0 0;
+            opacity: 0.9;
+        }}
+        .section {{
+            margin: 0;
+            border-bottom: 1px solid #eee;
+        }}
+        .section:last-child {{
+            border-bottom: none;
+        }}
+        .section-header {{
+            background: #f8f9fa;
+            padding: 20px 30px;
+            margin: 0;
+            border-left: 4px solid #667eea;
+        }}
+        .section-header h2 {{
+            margin: 0;
+            color: #333;
+            font-size: 1.4em;
+        }}
+        .section-content {{
+            padding: 30px;
+        }}
+        .output {{
+            background: #f8f9fa;
+            border: 1px solid #e9ecef;
+            border-radius: 4px;
+            padding: 20px;
+            font-family: 'Monaco', 'Menlo', 'Ubuntu Mono', monospace;
+            font-size: 14px;
+            line-height: 1.4;
+            white-space: pre-wrap;
+            overflow-x: auto;
+        }}
+        .timestamp {{
+            text-align: center;
+            padding: 20px;
+            color: #666;
+            font-size: 0.9em;
+            background: #f8f9fa;
+        }}
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>Migration Report</h1>
+            <p>{domain} - Row {row}</p>
+        </div>
+        
+        <div class="section">
+            <div class="section-header">
+                <h2>📄 Page Data</h2>
+            </div>
+            <div class="section-content">
+                <div class="output">{show_page_output}</div>
+            </div>
+        </div>
+        
+        <div class="section">
+            <div class="section-header">
+                <h2>🔄 Page Mapping</h2>
+            </div>
+            <div class="section-content">
+                <div class="output">{migrate_output}</div>
+            </div>
+        </div>
+        
+        <div class="section">
+            <div class="section-header">
+                <h2>🔗 Links Analysis</h2>
+            </div>
+            <div class="section-content">
+                <div class="output">{links_output}</div>
+            </div>
+        </div>
+        
+        <div class="timestamp">
+            Generated on {timestamp}
+        </div>
+    </div>
+</body>
+</html>
+"""
+
+    from datetime import datetime
+
+    timestamp = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+
+    return html_template.format(
+        domain=domain,
+        row=row,
+        show_page_output=show_page_output.replace("<", "&lt;").replace(">", "&gt;"),
+        migrate_output=migrate_output.replace("<", "&lt;").replace(">", "&gt;"),
+        links_output=links_output.replace("<", "&lt;").replace(">", "&gt;"),
+        timestamp=timestamp,
+    )
+
+
+def cmd_report(args, state):
+    """Generate an HTML report containing page data, migration mapping, and links analysis."""
+    # If no arguments provided, run check first to populate data
+    if not args:
+        print("🔄 Running 'check' to gather page data...")
+        cmd_check([], state)
+        if not state.current_page_data:
+            print("❌ Failed to gather page data. Cannot generate report.")
+            return
+
+    # Get domain and row for filename
+    domain = state.get_variable("DOMAIN") or "unknown"
+    row = state.get_variable("ROW") or "unknown"
+
+    # Clean domain name for filename (remove spaces, special chars)
+    clean_domain = re.sub(r"[^a-zA-Z0-9]", "_", domain.lower())
+    filename = f"{clean_domain}_{row}.html"
+
+    print(f"📊 Generating report: {filename}")
+
+    # Capture output from each command
+    print("  ▶ Capturing page data...")
+    if state.current_page_data:
+        show_page_output = _capture_output(display_page_data, state.current_page_data)
+    else:
+        show_page_output = "❌ No page data available. Run 'check' first."
+
+    print("  ▶ Capturing migration mapping...")
+    migrate_output = _capture_migrate_page_mapping_output(state)
+
+    print("  ▶ Capturing links analysis...")
+    from lookup_utils import analyze_page_links_for_migration
+
+    links_output = _capture_output(analyze_page_links_for_migration, state)
+
+    # Generate HTML
+    print("  ▶ Generating HTML...")
+    html_content = _generate_html_report(domain, row, show_page_output, migrate_output, links_output)
+
+    # Write to file
+    try:
+        with open(filename, "w", encoding="utf-8") as f:
+            f.write(html_content)
+        print(f"✅ Report saved to: {filename}")
+        print(f"💡 Open the file in your browser to view the report")
+    except Exception as e:
+        print(f"❌ Failed to save report: {e}")
 
 
 def cmd_check(args, state):
@@ -140,13 +364,6 @@ def cmd_debug(args):
 
 def cmd_help(args, state):
     """Show help information."""
-    if args and args[0] in COMMANDS:
-        cmd_name = args[0]
-        cmd_func = COMMANDS[cmd_name]
-        print(f"\nHelp for '{cmd_name}':")
-        print(cmd_func.__doc__ or "No help available.")
-        return
-
     print("\n" + "=" * 60)
     print("LINKER CLI - COMMAND REFERENCE")
     print("=" * 60)
