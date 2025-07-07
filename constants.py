@@ -10,7 +10,7 @@ DOMAINS = [
         "full_name": "Adult Health",
         "worksheet_name": "Adult Health",
         "sitecore_domain_name": "Health",
-        "url": None,
+        "url": "muschealth.org",
         "worksheet_header_row": 2,
     },
     {
@@ -31,21 +31,21 @@ DOMAINS = [
         "full_name": "Hollings Cancer",
         "worksheet_name": "Hollings Cancer",
         "sitecore_domain_name": "Hollings",
-        "url": None,
+        "url": "hollingscancercenter.musc.edu",
         "worksheet_header_row": 3,
     },
     {
         "full_name": "Childrens Health",
         "worksheet_name": "Childrens Health",
         "sitecore_domain_name": "Kids",
-        "url": None,
+        "url": "musckids.org",
         "worksheet_header_row": 3,
     },
     {
         "full_name": "CDM",
         "worksheet_name": "CDM",
         "sitecore_domain_name": "Dental Medicine",
-        "url": None,
+        "url": "dentistry.musc.edu",
         "worksheet_header_row": 3,
     },
     {
