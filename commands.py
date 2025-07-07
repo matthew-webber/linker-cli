@@ -220,7 +220,7 @@ def cmd_report(args, state):
 
     # Clean domain name for filename (remove spaces, special chars)
     clean_domain = re.sub(r"[^a-zA-Z0-9]", "_", domain.lower())
-    filename = f"{clean_domain}_{row}.html"
+    filename = f"./reports/{clean_domain}_{row}.html"
 
     print(f"📊 Generating report: {filename}")
 
