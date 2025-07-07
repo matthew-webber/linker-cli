@@ -183,7 +183,7 @@ def analyze_page_links_for_migration(state):
             )
             for idx, line in enumerate(path_str.split("\n")):
                 # Prefix first line with 🎯, subsequent lines align
-                prefix = "    🏠 " if idx == 0 else "       "
+                prefix = "    " if idx == 0 else "       "
                 print(f"{prefix} {line}")
         else:
             print(f"    ❌ Not found in DSM - manual migration required")

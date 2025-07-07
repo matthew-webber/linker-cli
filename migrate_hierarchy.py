@@ -4,10 +4,11 @@ from constants import DOMAIN_MAPPING
 
 
 def format_hierarchy(root: str, segments: list) -> str:
-    """Format the Sitecore hierarchy as a multi-line string."""
-    lines = [f"{root} (Sites)"]
-    for seg in segments:
-        lines.append(f" > {seg}")
+    """Format the Sitecore hierarchy as a multi-line filesystem-style tree."""
+    lines = [f"🏠 {root}"]
+    for idx, seg in enumerate(segments):
+        indent = "|   " * idx
+        lines.append(f"{indent}|-- {seg}")
     return "\n".join(lines)
 
 
