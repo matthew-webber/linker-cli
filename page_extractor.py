@@ -39,10 +39,10 @@ def extract_links_from_page(url, selector="#main"):
         soup = BeautifulSoup(response.text, "html.parser")
         container = soup.select_one(selector)
         if not container:
-            debug_print(
-                f"Warning: No element found matching selector '{selector}', falling back to entire page"
+            print(
+                f"⚠️ Warning ⚠️: No element found matching selector '{selector}', falling back to entire page"
             )
-            container = soup
+            # container = soup
         anchors = container.find_all("a", href=True)
         debug_print(f"Found {len(anchors)} anchor tags")
         links = []
@@ -70,10 +70,10 @@ def extract_embeds_from_page(soup, selector="#main"):
     embeds = []
     container = soup.select_one(selector)
     if not container:
-        debug_print(
+        print(
             f"Warning: No element found matching selector '{selector}', falling back to entire page for embeds"
         )
-        container = soup
+        # container = soup
     for iframe in container.find_all("iframe", src=True):
         src = iframe.get("src", "")
         if "vimeo" in src.lower():
