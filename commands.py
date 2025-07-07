@@ -155,19 +155,19 @@ def _generate_html_report(domain, row, show_page_output, migrate_output, links_o
         
         <div class="section">
             <div class="section-header">
-                <h2>📄 Page Data</h2>
+                <h2>🔄 Page Mapping</h2>
             </div>
             <div class="section-content">
-                <div class="output">{show_page_output}</div>
+                <div class="output">{migrate_output}</div>
             </div>
         </div>
         
         <div class="section">
             <div class="section-header">
-                <h2>🔄 Page Mapping</h2>
+                <h2>📄 Page Data</h2>
             </div>
             <div class="section-content">
-                <div class="output">{migrate_output}</div>
+                <div class="output">{show_page_output}</div>
             </div>
         </div>
         
