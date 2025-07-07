@@ -32,8 +32,16 @@ def lookup_link_in_dsm(link_url, excel_data=None, state=None):
         debug_print("No Excel data available for lookup")
         return {"found": False, "error": "No DSM data loaded"}
 
-    # Normalize the URL for comparison (remove trailing slashes, etc.)
-    normalized_link = link_url.rstrip("/")
+    # Normalize the URL for comparison (remove trailing slashes and fragments/anchors)
+    parsed_url = urlparse(link_url)
+    # Reconstruct URL without fragment (anchor)
+    normalized_link = f"{parsed_url.scheme}://{parsed_url.netloc}{parsed_url.path}"
+    if parsed_url.query:
+        normalized_link += f"?{parsed_url.query}"
+    # Remove trailing slash
+    normalized_link = normalized_link.rstrip("/")
+
+    debug_print(f"Original link: {link_url}")
     debug_print(f"Normalized link for lookup: {normalized_link}")
 
     # Create a regex pattern to find the URL anywhere in the cell
