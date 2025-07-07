@@ -241,7 +241,9 @@ def cmd_report(args, state):
 
     # Generate HTML
     print("  ▶ Generating HTML...")
-    html_content = _generate_html_report(domain, row, show_page_output, migrate_output, links_output)
+    html_content = _generate_html_report(
+        domain, row, show_page_output, migrate_output, links_output
+    )
 
     # Write to file
     try:
