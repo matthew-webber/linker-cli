@@ -11,8 +11,10 @@ def sync_debug_with_state(state):
 
 def debug_print(*msg):
     """Print debug messages if DEBUG is enabled."""
-    if DEBUG:
-        print(f"DEBUG: {msg}")
+    if DEBUG and len(msg) == 1:
+        print(f"DEBUG: {msg[0]}")
+    elif DEBUG and len(msg) > 1:
+        print("DEBUG:", " ".join(str(m) for m in msg))
 
 
 def set_debug(enabled):
