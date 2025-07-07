@@ -116,7 +116,7 @@ def get_commands(state):
     return {
         "check": lambda args: cmd_check(args, state),
         "clear": lambda args: cmd_clear(args),
-        "debug": lambda args: cmd_debug(args),
+        "debug": lambda args: cmd_debug(args, state),
         "help": lambda args: cmd_help(args, state),
         "links": lambda args: cmd_links(args, state),
         "load": lambda args: cmd_load(args, state),

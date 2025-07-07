@@ -2,11 +2,14 @@
 Utility functions for Linker CLI.
 """
 
-# Global debug flag
-DEBUG = True
+
+def sync_debug_with_state(state):
+    """Sync the cached DEBUG value with the state."""
+    global DEBUG
+    DEBUG = state.get_variable("DEBUG").lower() in ["true", "1", "yes", "on"]
 
 
-def debug_print(msg):
+def debug_print(*msg):
     """Print debug messages if DEBUG is enabled."""
     if DEBUG:
         print(f"DEBUG: {msg}")
@@ -14,5 +17,8 @@ def debug_print(msg):
 
 def set_debug(enabled):
     """Set the global debug flag."""
-    global DEBUG
-    DEBUG = enabled
+    # Import here to avoid circular imports
+    from main import state
+
+    state.set_variable("DEBUG", "true" if enabled else "false")
+    debug_print(f"Debugging is {'enabled' if enabled else 'disabled'}")

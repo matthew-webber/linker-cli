@@ -19,6 +19,7 @@ class CLIState:
             "DSM_FILE": "",
             "CACHE_FILE": "",
             "PROPOSED_PATH": "",
+            "DEBUG": "true",
         }
         self.excel_data = None
         self.current_page_data = None

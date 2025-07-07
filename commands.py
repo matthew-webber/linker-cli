@@ -24,9 +24,7 @@ import json
 from pathlib import Path
 
 from constants import DOMAINS
-from utils import debug_print
-
-DEBUG = True
+from utils import debug_print, sync_debug_with_state
 
 CACHE_DIR = Path("migration_cache")
 CACHE_DIR.mkdir(exist_ok=True)
@@ -349,22 +347,26 @@ def cmd_clear(args):
     os.system("clear" if os.name != "nt" else "cls")
 
 
-def cmd_debug(args):
+def cmd_debug(args, state):
     """Toggle debug mode."""
-    global DEBUG
+    current_debug = state.get_variable("DEBUG").lower() in ["true", "1", "yes", "on"]
+
     if not args:
-        DEBUG = not DEBUG
+        # Toggle current state
+        new_debug = not current_debug
     else:
         arg = args[0].lower()
         if arg in ["on", "true", "1", "yes"]:
-            DEBUG = True
+            new_debug = True
         elif arg in ["off", "false", "0", "no"]:
-            DEBUG = False
+            new_debug = False
         else:
             print("Usage: debug [on|off]")
             return
 
-    print(f"🐛 Debug mode: {'ON' if DEBUG else 'OFF'}")
+    state.set_variable("DEBUG", "true" if new_debug else "false")
+    sync_debug_with_state(state)  # Sync the cached value
+    print(f"🐛 Debug mode: {'ON' if new_debug else 'OFF'}")
 
 
 def cmd_help(args, state):
@@ -437,7 +439,7 @@ def cmd_lookup(args, state):
 
 def cmd_load(args, state):
     """Handle the 'load' command for loading URLs from spreadsheet."""
-
+    print(f"Args received: {args}")
     # Help text
     if not args or len(args) < 2:
         print("Usage: load <domain> <row_number>")
@@ -458,7 +460,10 @@ def cmd_load(args, state):
         state.excel_data = load_spreadsheet(dsm_file)
         state.set_variable("DSM_FILE", dsm_file)
 
-    user_domain = args[0]
+    user_domain = " ".join(args[:-1])
+    row_arg = args[-1]
+
+    debug_print("Executing cmd_load with args:", args)
 
     # Find the actual domain name with case-insensitive lookup
     domain = next(
@@ -470,7 +475,7 @@ def cmd_load(args, state):
     df_header_row = df_header_row + 2
 
     try:
-        row_num = int(args[1])
+        row_num = int(row_arg)
     except ValueError:
         print("❌ Row number must be an integer")
         return

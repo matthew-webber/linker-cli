@@ -16,7 +16,7 @@ from page_extractor import (
 import requests
 from bs4 import BeautifulSoup
 
-from utils import debug_print, set_debug
+from utils import debug_print, set_debug, sync_debug_with_state
 
 # Toggle debugging at top level (default: on)
 warnings.filterwarnings("ignore", category=UserWarning, module="openpyxl")
@@ -96,9 +96,9 @@ def main():
     parser.set_defaults(debug=True)
     args = parser.parse_args()
 
-    # Set debug mode in utils
+    # Set debug mode in utils + sync
+    sync_debug_with_state(state)
     set_debug(args.debug)
-    debug_print(f"Debugging is {'enabled' if args.debug else 'disabled'}")
 
     # Set initial state from command line args
     if args.url:
