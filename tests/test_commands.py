@@ -216,3 +216,63 @@ def test__get_var_description(mock_state):
     """Test the _get_var_description function."""
     _get_var_description("var_name", mock_state)
     mock_state.list_variables.assert_called_once()
+
+
+def test_cmd_report_no_args_no_data(mock_state, mock_spinner, capsys):
+    """Test cmd_report with no args and no current page data."""
+    mock_state.current_page_data = None
+    mock_state.get_variable.return_value = None
+    mock_state.validate_required_vars.return_value = (["URL", "SELECTOR"], [])
+
+    cmd_report([], mock_state)
+    captured = capsys.readouterr()
+
+    assert "Running 'check' to gather page data..." in captured.out
+    assert "Failed to gather page data. Cannot generate report." in captured.out
+
+
+def test_cmd_report_with_data(mock_state, mock_cache_page_data, monkeypatch, capsys):
+    """Test cmd_report with existing page data."""
+    mock_state.current_page_data = {"key": "value", "links": [], "pdfs": []}
+    mock_state.get_variable.side_effect = lambda x: {
+        "DOMAIN": "Enterprise",
+        "ROW": "90",
+        "URL": "http://example.com",
+        "PROPOSED_PATH": "/test/path"
+    }.get(x, "")
+
+    # Mock file writing
+    mock_open = MagicMock()
+    mock_file = MagicMock()
+    mock_open.return_value.__enter__ = MagicMock(return_value=mock_file)
+    mock_open.return_value.__exit__ = MagicMock(return_value=False)
+    monkeypatch.setattr("builtins.open", mock_open)
+
+    cmd_report([], mock_state)
+    captured = capsys.readouterr()
+
+    assert "Generating report: enterprise_90.html" in captured.out
+    assert "Report saved to: enterprise_90.html" in captured.out
+    mock_open.assert_called_once_with("enterprise_90.html", 'w', encoding='utf-8')
+
+
+def test_cmd_report_file_write_error(mock_state, mock_cache_page_data, monkeypatch, capsys):
+    """Test cmd_report when file writing fails."""
+    mock_state.current_page_data = {"key": "value", "links": [], "pdfs": []}
+    mock_state.get_variable.side_effect = lambda x: {
+        "DOMAIN": "Enterprise",
+        "ROW": "90",
+        "URL": "http://example.com",
+        "PROPOSED_PATH": "/test/path"
+    }.get(x, "")
+
+    # Mock file writing to raise an exception
+    def mock_open_side_effect(*args, **kwargs):
+        raise PermissionError("Permission denied")
+
+    monkeypatch.setattr("builtins.open", mock_open_side_effect)
+
+    cmd_report([], mock_state)
+    captured = capsys.readouterr()
+
+    assert "Failed to save report: Permission denied" in captured.out
