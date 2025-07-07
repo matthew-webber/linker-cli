@@ -72,12 +72,12 @@ def get_column_value(sheet_df, excel_row, column_name):
         return ""
 
 
-def get_existing_url(sheet_df, excel_row):
-    return get_column_value(sheet_df, excel_row, "EXISTING URL")
+def get_existing_url(sheet_df, excel_row, existing_url_col_name="EXISTING URL"):
+    return get_column_value(sheet_df, excel_row, existing_url_col_name)
 
 
-def get_proposed_url(sheet_df, excel_row):
-    return get_column_value(sheet_df, excel_row, "PROPOSED URL")
+def get_proposed_url(sheet_df, excel_row, proposed_url_col_name="PROPOSED URL"):
+    return get_column_value(sheet_df, excel_row, proposed_url_col_name)
 
 
 def get_row_data(sheet_df, excel_row, columns=None):

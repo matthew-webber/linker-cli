@@ -99,6 +99,7 @@ def main():
     # Set debug mode in utils + sync
     sync_debug_with_state(state)
     set_debug(args.debug)
+    sync_debug_with_state(state)
 
     # Set initial state from command line args
     if args.url:

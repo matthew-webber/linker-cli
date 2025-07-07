@@ -2,6 +2,7 @@
 Link lookup and analysis utilities for Linker CLI.
 """
 
+import re
 from urllib.parse import urlparse
 from constants import DOMAINS, DOMAIN_MAPPING
 from dsm_utils import get_existing_url, get_proposed_url
@@ -35,27 +36,54 @@ def lookup_link_in_dsm(link_url, excel_data=None, state=None):
     normalized_link = link_url.rstrip("/")
     debug_print(f"Normalized link for lookup: {normalized_link}")
 
-    for domain in DOMAINS:
+    # Create a regex pattern to find the URL anywhere in the cell
+    # Escape special regex characters in the URL and allow for optional trailing slash
+    escaped_url = re.escape(normalized_link)
+    url_pattern = rf"(?:^|\s){escaped_url}/?(?:\s|$)"
+
+    debug_print(f"🔎🔠 Using regex pattern for lookup: {url_pattern}")
+
+    bonus_domains = [
+        {
+            "full_name": "News Content",
+            "worksheet_name": "News Content",
+            "sitecore_domain_name": "none_defined",
+            "url": "example.com",
+            "worksheet_header_row": 0,
+        }
+    ]
+    for domain in DOMAINS + bonus_domains:
         try:
             df = excel_data.parse(
                 domain.get("worksheet_name", domain["full_name"]),
                 header=domain.get("worksheet_header_row", 4),
             )
 
+            # Hacky workaround for News Content domain
+            # to handle different column names for the time being
+            # TODO: add existing/proposed URL col values to the domain mapping
+            existing_url_col = None
+            proposed_url_col = None
+
             # Search through all rows in this domain
             for idx in range(len(df)):
                 excel_row = idx
-                existing_url = get_existing_url(df, excel_row)
+                if domain["full_name"].lower() == "news content":
+                    existing_url_col = "Current URLs"
+                    proposed_url_col = "Path"
+
+                existing_url = get_existing_url(
+                    df, excel_row, existing_url_col or "EXISTING URL"
+                )
 
                 if not existing_url:
                     continue
 
-                # Normalize the existing URL for comparison
-                normalized_existing = existing_url.rstrip("/")
-
-                # Check for exact match
-                if normalized_link == normalized_existing:
-                    proposed_url = get_proposed_url(df, excel_row)
+                # Use regex to check if the target URL exists anywhere in the cell
+                if re.search(url_pattern, existing_url, re.IGNORECASE):
+                    proposed_url = get_proposed_url(
+                        df, excel_row, proposed_url_col or "PROPOSED URL"
+                    )
                     debug_print(f"Found match! Proposed URL: {proposed_url}")
 
                     # Generate the proposed hierarchy using existing functions
