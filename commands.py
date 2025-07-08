@@ -370,9 +370,14 @@ def cmd_debug(args, state):
     sync_debug_with_state(state)  # Sync the cached value
     print(f"🐛 Debug mode: {'ON' if new_debug else 'OFF'}")
 
+
 def cmd_sidebar(args, state):
     """Toggle sidebar inclusion in page extraction."""
-    current_value = state.get_variable("INCLUDE_SIDEBAR").lower() in ["true", "1", "yes"]
+    current_value = state.get_variable("INCLUDE_SIDEBAR").lower() in [
+        "true",
+        "1",
+        "yes",
+    ]
 
     if not args:
         # Toggle current state
@@ -622,6 +627,7 @@ def display_domains():
     for i, domain in enumerate([domain.get("full_name") for domain in DOMAINS], 1):
         print(f"  {i:2}. {domain}")
 
+
 def cmd_open(args, state):
     """Open different resources in their default applications."""
     if not args:
@@ -633,59 +639,63 @@ def cmd_open(args, state):
         return
 
     target = args[0].lower()
-    
+
     if target == "dsm":
         dsm_file = state.get_variable("DSM_FILE")
         if not dsm_file:
-            print("❌ No DSM file loaded. Use 'load' command or set DSM_FILE variable first.")
+            print(
+                "❌ No DSM file loaded. Use 'load' command or set DSM_FILE variable first."
+            )
             return
-        
+
         dsm_path = Path(dsm_file)
         if not dsm_path.exists():
             print(f"❌ DSM file not found: {dsm_file}")
             return
-            
+
         try:
             _open_file_in_default_app(dsm_path)
             print(f"✅ Opening DSM file: {dsm_file}")
         except Exception as e:
             print(f"❌ Failed to open DSM file: {e}")
-    
+
     elif target in ["page", "url"]:
         url = state.get_variable("URL")
         if not url:
-            print("❌ No URL set. Use 'set URL <value>' or 'load <domain> <row>' first.")
+            print(
+                "❌ No URL set. Use 'set URL <value>' or 'load <domain> <row>' first."
+            )
             return
-        
+
         try:
             _open_url_in_browser(url)
             print(f"✅ Opening URL in browser: {url}")
         except Exception as e:
             print(f"❌ Failed to open URL: {e}")
-    
+
     elif target == "report":
         domain = state.get_variable("DOMAIN")
         row = state.get_variable("ROW")
-        
+
         if not domain or not row:
             print("❌ No domain/row loaded. Use 'load <domain> <row>' first.")
             return
-        
+
         # Generate the expected report filename
         clean_domain = re.sub(r"[^a-zA-Z0-9]", "_", domain.lower())
         report_file = Path(f"./reports/{clean_domain}_{row}.html")
-        
+
         if not report_file.exists():
             print(f"❌ Report not found: {report_file}")
             print("💡 Generate a report first with: report")
             return
-        
+
         try:
             _open_file_in_default_app(report_file)
             print(f"✅ Opening report: {report_file}")
         except Exception as e:
             print(f"❌ Failed to open report: {e}")
-    
+
     else:
         print(f"❌ Unknown target: {target}")
         print("Available targets: dsm, page, url, report")
@@ -695,7 +705,7 @@ def _open_file_in_default_app(file_path):
     """Open a file in its default application based on the OS."""
     system = platform.system()
     file_path = Path(file_path).resolve()  # Get absolute path
-    
+
     if system == "Darwin":  # macOS
         subprocess.run(["open", str(file_path)], check=True)
     elif system == "Windows":
@@ -709,7 +719,7 @@ def _open_file_in_default_app(file_path):
 def _open_url_in_browser(url):
     """Open a URL in the default web browser."""
     system = platform.system()
-    
+
     if system == "Darwin":  # macOS
         subprocess.run(["open", url], check=True)
     elif system == "Windows":
