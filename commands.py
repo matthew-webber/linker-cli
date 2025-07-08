@@ -68,7 +68,247 @@ def _capture_migrate_page_mapping_output(state):
     return output.getvalue()
 
 
-def _generate_html_report(domain, row, show_page_output, migrate_output, links_output):
+def _generate_consolidated_section(state):
+    """Generate the consolidated section with enhanced link display."""
+    url = state.get_variable("URL")
+    domain = state.get_variable("DOMAIN")
+    row = state.get_variable("ROW")
+    proposed_path = state.get_variable("PROPOSED_PATH")
+
+    if not state.current_page_data:
+        return "<p>No page data available.</p>"
+
+    # Get hierarchy information
+    try:
+        from migrate_hierarchy import get_sitecore_root
+
+        root = get_sitecore_root(url)
+        if url:
+            # Parse existing hierarchy
+            from urllib.parse import urlparse
+
+            parsed = urlparse(url)
+            existing_segments = [
+                seg for seg in parsed.path.strip("/").split("/") if seg
+            ]
+        else:
+            existing_segments = []
+
+        # Parse proposed hierarchy
+        if proposed_path:
+            proposed_segments = [
+                seg for seg in proposed_path.strip("/").split("/") if seg
+            ]
+        else:
+            proposed_segments = []
+    except Exception:
+        root = "Sites"
+        existing_segments = []
+        proposed_segments = []
+
+    # Build the consolidated HTML
+    html = f"""
+    <div class="consolidated-section">
+        <div class="source-info">
+            <h3>📍 Source Information</h3>
+            <p><strong>URL:</strong> <a href="{url}" target="_blank">{url}</a></p>
+            <p><strong>DSM Location:</strong> {domain} {row}</p>
+        </div>
+        
+        <div class="hierarchy-info">
+            <h3>🏗️ Directory Structure</h3>
+            <div class="hierarchy-comparison">
+                <div class="existing-hierarchy">
+                    <h4>Current Structure</h4>
+                    <div class="hierarchy-tree">
+                        🏠 {root}<br>
+    """
+
+    # Add existing hierarchy
+    for i, segment in enumerate(existing_segments):
+        indent = "   " * (i + 1)
+        html += f"{indent}|-- {segment}<br>"
+
+    html += """
+                    </div>
+                </div>
+                <div class="proposed-hierarchy">
+                    <h4>Proposed Structure</h4>
+                    <div class="hierarchy-tree">
+    """
+
+    if proposed_segments:
+        html += f"                        🏠 {root}<br>"
+        for i, segment in enumerate(proposed_segments):
+            indent = "   " * (i + 1)
+            html += f"{indent}|-- {segment}<br>"
+    else:
+        html += "                        <em>No proposed path set</em><br>"
+
+    html += """
+                    </div>
+                </div>
+            </div>
+        </div>
+        
+        <div class="links-summary">
+            <h3>🔗 Found Links & Resources</h3>
+    """
+
+    # Process links, PDFs, and embeds
+    all_items = []
+
+    # Add regular links
+    for link in state.current_page_data.get("links", []):
+        all_items.append(("link", link))
+
+    # Add sidebar links if available
+    for link in state.current_page_data.get("sidebar_links", []):
+        all_items.append(("sidebar_link", link))
+
+    # Add PDFs
+    for pdf in state.current_page_data.get("pdfs", []):
+        all_items.append(("pdf", pdf))
+
+    # Add sidebar PDFs if available
+    for pdf in state.current_page_data.get("sidebar_pdfs", []):
+        all_items.append(("sidebar_pdf", pdf))
+
+    # Add embeds
+    for embed in state.current_page_data.get("embeds", []):
+        all_items.append(("embed", embed))
+
+    # Add sidebar embeds if available
+    for embed in state.current_page_data.get("sidebar_embeds", []):
+        all_items.append(("sidebar_embed", embed))
+
+    if not all_items:
+        html += "<p><em>No links or resources found.</em></p>"
+    else:
+        html += '<div class="links-list">'
+
+        for item_type, item in all_items:
+            text, href, status = item
+
+            debug_print(
+                f"Processing item: {item_type} - {text} ({href}) with status {status}"
+            )
+
+            # Convert http status code to integer
+            try:
+                status = int(status)
+            except (ValueError, TypeError):
+                debug_print(
+                    f"Invalid status code for {href}: {status} <-- status rec'd"
+                )
+                status = 0
+
+            # Determine status circle
+            if status == 200:
+                circle = "🟢"
+            elif status >= 400:
+                circle = "🔴"
+            else:
+                circle = "🟡"
+
+            # Generate copy value based on link type
+            copy_value = _get_copy_value(href)
+
+            # Check if it's an internal link for hierarchy display
+            is_internal = _is_internal_link(href, url)
+            internal_hierarchy = ""
+
+            if is_internal:
+                try:
+                    from lookup_utils import lookup_link_in_dsm
+
+                    lookup_result = lookup_link_in_dsm(href, state.excel_data, state)
+                    if lookup_result.get("found"):
+                        hierarchy = lookup_result.get("proposed_hierarchy", {})
+                        segments = hierarchy.get("segments", [])
+                        if segments:
+                            root_name = hierarchy.get("root", "Sites")
+                            internal_hierarchy = (
+                                f"<div class='internal-hierarchy'>   → {root_name}"
+                            )
+                            for segment in segments:
+                                internal_hierarchy += f" / {segment}"
+                            internal_hierarchy += "</div>"
+                except Exception:
+                    pass
+
+            html += f"""
+                <div class="link-item">
+                    <div class="link-main">
+                        {circle} <a href="{href}" target="_blank">{text}</a>
+                        <button class="copy-btn" onclick="copyToClipboard('{copy_value}')" title="Copy URL">
+                            <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor">
+                                <path d="M16 1H4c-1.1 0-2 .9-2 2v14h2V3h12V1zm3 4H8c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h11c1.1 0 2-.9 2-2V7c0-1.1-.9-2-2-2zm0 16H8V7h11v14z"/>
+                            </svg>
+                        </button>
+                        <span class="item-type">[{item_type.replace('_', ' ').title()}]</span>
+                    </div>
+                    {internal_hierarchy}
+                </div>
+            """
+
+        html += "</div>"
+
+    html += """
+        </div>
+    </div>
+    """
+
+    return html
+
+
+def _get_copy_value(href):
+    """Transform the href for copying based on link type."""
+    if href.startswith("tel:"):
+        # Extract phone number and format
+        phone = href.replace("tel:", "").strip()
+        # Remove all non-digit characters
+        digits_only = re.sub(r"[^\d]", "", phone)
+
+        if len(digits_only) == 10:
+            # 10 digits - add +1
+            return f"+1{digits_only}"
+        elif len(digits_only) == 11 and digits_only.startswith("1"):
+            # 11 digits starting with 1 - just add +
+            return f"+{digits_only}"
+        else:
+            # Something else - return as is
+            return href
+
+    elif href.lower().endswith(".pdf") or "/pdf/" in href.lower():
+        # PDF link - remove domain part
+        from urllib.parse import urlparse
+
+        parsed = urlparse(href)
+        return parsed.path
+
+    else:
+        # Regular link - return as is
+        return href
+
+
+def _is_internal_link(href, base_url):
+    """Check if a link is internal to the same domain."""
+    from urllib.parse import urlparse
+
+    try:
+        href_domain = urlparse(href).netloc.lower()
+        base_domain = urlparse(base_url).netloc.lower()
+
+        # Check if domains match or if it's a relative link
+        return href_domain == base_domain or not href_domain
+    except Exception:
+        return False
+
+
+def _generate_html_report(
+    domain, row, show_page_output, migrate_output, links_output, consolidated_output
+):
     """Generate HTML report from captured outputs."""
     html_template = """
 <!DOCTYPE html>
@@ -146,13 +386,138 @@ def _generate_html_report(domain, row, show_page_output, migrate_output, links_o
             font-size: 0.9em;
             background: #f8f9fa;
         }}
+        
+        /* Consolidated section styles */
+        .consolidated-section {{
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+        }}
+        .source-info, .hierarchy-info, .links-summary {{
+            margin-bottom: 30px;
+        }}
+        .source-info h3, .hierarchy-info h3, .links-summary h3 {{
+            color: #333;
+            border-bottom: 2px solid #667eea;
+            padding-bottom: 8px;
+            margin-bottom: 16px;
+        }}
+        .hierarchy-comparison {{
+            display: flex;
+            gap: 30px;
+            margin-top: 16px;
+        }}
+        .existing-hierarchy, .proposed-hierarchy {{
+            flex: 1;
+            background: #f8f9fa;
+            border-radius: 6px;
+            padding: 16px;
+        }}
+        .existing-hierarchy h4, .proposed-hierarchy h4 {{
+            margin-top: 0;
+            color: #555;
+            font-size: 1.1em;
+        }}
+        .hierarchy-tree {{
+            font-family: 'Monaco', 'Menlo', 'Ubuntu Mono', monospace;
+            font-size: 14px;
+            line-height: 1.6;
+            color: #666;
+        }}
+        .links-list {{
+            display: flex;
+            flex-direction: column;
+            gap: 12px;
+        }}
+        .link-item {{
+            background: #f8f9fa;
+            border-radius: 6px;
+            padding: 12px;
+            border-left: 3px solid #667eea;
+        }}
+        .link-main {{
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }}
+        .link-main a {{
+            color: #0066cc;
+            text-decoration: none;
+            flex-grow: 1;
+        }}
+        .link-main a:hover {{
+            text-decoration: underline;
+        }}
+        .copy-btn {{
+            background: #667eea;
+            border: none;
+            border-radius: 4px;
+            padding: 4px 8px;
+            color: white;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            font-size: 12px;
+        }}
+        .copy-btn:hover {{
+            background: #5a67d8;
+        }}
+        .copy-btn svg {{
+            width: 14px;
+            height: 14px;
+        }}
+        .item-type {{
+            font-size: 12px;
+            color: #666;
+            background: #e2e8f0;
+            padding: 2px 6px;
+            border-radius: 3px;
+        }}
+        .internal-hierarchy {{
+            margin-top: 8px;
+            margin-left: 24px;
+            font-size: 14px;
+            color: #666;
+            font-style: italic;
+        }}
+        
+        @media (max-width: 768px) {{
+            .hierarchy-comparison {{
+                flex-direction: column;
+                gap: 16px;
+            }}
+            .link-main {{
+                flex-wrap: wrap;
+            }}
+        }}
     </style>
+    <script>
+        function copyToClipboard(text) {{
+            navigator.clipboard.writeText(text).then(function() {{
+                // Visual feedback
+                event.target.closest('.copy-btn').style.background = '#48bb78';
+                setTimeout(() => {{
+                    event.target.closest('.copy-btn').style.background = '#667eea';
+                }}, 1000);
+            }}).catch(function(err) {{
+                console.error('Could not copy text: ', err);
+                alert('Copy failed. Text: ' + text);
+            }});
+        }}
+    </script>
 </head>
 <body>
     <div class="container">
         <div class="header">
             <h1>Migration Report</h1>
             <p>{domain} - Row {row}</p>
+        </div>
+        
+        <div class="section">
+            <div class="section-header">
+                <h2>📋 Summary</h2>
+            </div>
+            <div class="section-content">
+                {consolidated_output}
+            </div>
         </div>
         
         <div class="section">
@@ -197,6 +562,7 @@ def _generate_html_report(domain, row, show_page_output, migrate_output, links_o
     return html_template.format(
         domain=domain,
         row=row,
+        consolidated_output=consolidated_output,
         show_page_output=show_page_output.replace("<", "&lt;").replace(">", "&gt;"),
         migrate_output=migrate_output.replace("<", "&lt;").replace(">", "&gt;"),
         links_output=links_output.replace("<", "&lt;").replace(">", "&gt;"),
@@ -239,10 +605,13 @@ def cmd_report(args, state):
 
     links_output = _capture_output(analyze_page_links_for_migration, state)
 
+    print("  ▶ Generating consolidated summary...")
+    consolidated_output = _generate_consolidated_section(state)
+
     # Generate HTML
     print("  ▶ Generating HTML...")
     html_content = _generate_html_report(
-        domain, row, show_page_output, migrate_output, links_output
+        domain, row, show_page_output, migrate_output, links_output, consolidated_output
     )
 
     # Write to file
