@@ -6,6 +6,9 @@ import os
 import sys
 from io import StringIO
 from contextlib import redirect_stdout
+import subprocess
+import platform
+from pathlib import Path
 
 # from state import CLIState
 from dsm_utils import (
@@ -21,7 +24,6 @@ from migration import migrate
 from spinner import Spinner
 import re
 import json
-from pathlib import Path
 
 from constants import DOMAINS
 from utils import debug_print, sync_debug_with_state
@@ -410,6 +412,7 @@ def cmd_help(args, state):
     print("Utility:")
     print("  help [command]        Show this help or help for specific command")
     print("  debug [on|off]        Toggle debug output")
+    print("  open <target>         Open DSM file, current URL, or report")
     print("  clear                 Clear the screen")
     print("  exit, quit            Exit the application")
     print()
@@ -618,3 +621,100 @@ def _get_var_description(var):
 def display_domains():
     for i, domain in enumerate([domain.get("full_name") for domain in DOMAINS], 1):
         print(f"  {i:2}. {domain}")
+
+def cmd_open(args, state):
+    """Open different resources in their default applications."""
+    if not args:
+        print("Usage: open <target>")
+        print("Available targets:")
+        print("  dsm        - Open the loaded DSM Excel file")
+        print("  [page|url] - Open the current URL in browser")
+        print("  report     - Open the latest report for current domain/row")
+        return
+
+    target = args[0].lower()
+    
+    if target == "dsm":
+        dsm_file = state.get_variable("DSM_FILE")
+        if not dsm_file:
+            print("❌ No DSM file loaded. Use 'load' command or set DSM_FILE variable first.")
+            return
+        
+        dsm_path = Path(dsm_file)
+        if not dsm_path.exists():
+            print(f"❌ DSM file not found: {dsm_file}")
+            return
+            
+        try:
+            _open_file_in_default_app(dsm_path)
+            print(f"✅ Opening DSM file: {dsm_file}")
+        except Exception as e:
+            print(f"❌ Failed to open DSM file: {e}")
+    
+    elif target in ["page", "url"]:
+        url = state.get_variable("URL")
+        if not url:
+            print("❌ No URL set. Use 'set URL <value>' or 'load <domain> <row>' first.")
+            return
+        
+        try:
+            _open_url_in_browser(url)
+            print(f"✅ Opening URL in browser: {url}")
+        except Exception as e:
+            print(f"❌ Failed to open URL: {e}")
+    
+    elif target == "report":
+        domain = state.get_variable("DOMAIN")
+        row = state.get_variable("ROW")
+        
+        if not domain or not row:
+            print("❌ No domain/row loaded. Use 'load <domain> <row>' first.")
+            return
+        
+        # Generate the expected report filename
+        clean_domain = re.sub(r"[^a-zA-Z0-9]", "_", domain.lower())
+        report_file = Path(f"./reports/{clean_domain}_{row}.html")
+        
+        if not report_file.exists():
+            print(f"❌ Report not found: {report_file}")
+            print("💡 Generate a report first with: report")
+            return
+        
+        try:
+            _open_file_in_default_app(report_file)
+            print(f"✅ Opening report: {report_file}")
+        except Exception as e:
+            print(f"❌ Failed to open report: {e}")
+    
+    else:
+        print(f"❌ Unknown target: {target}")
+        print("Available targets: dsm, page, url, report")
+
+
+def _open_file_in_default_app(file_path):
+    """Open a file in its default application based on the OS."""
+    system = platform.system()
+    file_path = Path(file_path).resolve()  # Get absolute path
+    
+    if system == "Darwin":  # macOS
+        subprocess.run(["open", str(file_path)], check=True)
+    elif system == "Windows":
+        subprocess.run(["start", "", str(file_path)], shell=True, check=True)
+    elif system == "Linux":
+        subprocess.run(["xdg-open", str(file_path)], check=True)
+    else:
+        raise OSError(f"Unsupported operating system: {system}")
+
+
+def _open_url_in_browser(url):
+    """Open a URL in the default web browser."""
+    system = platform.system()
+    
+    if system == "Darwin":  # macOS
+        subprocess.run(["open", url], check=True)
+    elif system == "Windows":
+        subprocess.run(["start", "", url], shell=True, check=True)
+    elif system == "Linux":
+        subprocess.run(["xdg-open", url], check=True)
+    else:
+        raise OSError(f"Unsupported operating system: {system}")
