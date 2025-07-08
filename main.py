@@ -16,7 +16,7 @@ from page_extractor import (
 import requests
 from bs4 import BeautifulSoup
 
-from utils import debug_print, set_debug, sync_debug_with_state
+from utils import debug_print, sync_debug_with_state, set_debug
 
 # Toggle debugging at top level (default: on)
 warnings.filterwarnings("ignore", category=UserWarning, module="openpyxl")
@@ -81,9 +81,6 @@ def main():
         description="Linker CLI POC - State-based Framework"
     )
     parser.add_argument(
-        "--debug", dest="debug", action="store_true", help="Enable debug output"
-    )
-    parser.add_argument(
         "--no-debug", dest="debug", action="store_false", help="Disable debug output"
     )
     parser.add_argument("--url", help="Set initial URL")
@@ -96,10 +93,8 @@ def main():
     parser.set_defaults(debug=True)
     args = parser.parse_args()
 
-    # Set debug mode in utils + sync
-    sync_debug_with_state(state)
-    set_debug(args.debug)
-    sync_debug_with_state(state)
+    # Set debug mode in utils
+    set_debug(args.debug, state)
 
     # Set initial state from command line args
     if args.url:

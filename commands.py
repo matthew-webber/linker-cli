@@ -836,7 +836,6 @@ def cmd_lookup(args, state):
 
 def cmd_load(args, state):
     """Handle the 'load' command for loading URLs from spreadsheet."""
-    print(f"Args received: {args}")
     # Help text
     if not args or len(args) < 2:
         print("Usage: load <domain> <row_number>")
