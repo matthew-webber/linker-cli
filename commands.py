@@ -241,7 +241,7 @@ def _generate_consolidated_section(state):
                 <div class="link-item">
                     <div class="link-main">
                         {circle} <a href="{href}" target="_blank">{text}</a>
-                        <button class="copy-btn" onclick="copyToClipboard('{copy_value}')" title="Copy URL">
+                        <button class="copy-btn" onclick="copyToClipboard(event, '{copy_value}')" title="Copy URL">
                             <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor">
                                 <path d="M16 1H4c-1.1 0-2 .9-2 2v14h2V3h12V1zm3 4H8c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h11c1.1 0 2-.9 2-2V7c0-1.1-.9-2-2-2zm0 16H8V7h11v14z"/>
                             </svg>
@@ -490,7 +490,7 @@ def _generate_html_report(
         }}
     </style>
     <script>
-        function copyToClipboard(text) {{
+        function copyToClipboard(event, text) {{
             navigator.clipboard.writeText(text).then(function() {{
                 // Visual feedback
                 event.target.closest('.copy-btn').style.background = '#48bb78';
