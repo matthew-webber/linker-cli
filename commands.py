@@ -282,10 +282,10 @@ def _get_copy_value(href):
 
         if len(digits_only) == 10:
             # 10 digits - add +1
-            return f"+1{digits_only}"
+            return f"tel:+1{digits_only}"
         elif len(digits_only) == 11 and digits_only.startswith("1"):
             # 11 digits starting with 1 - just add +
-            return f"+{digits_only}"
+            return f"tel:+{digits_only}"
         else:
             # Something else - return as is
             return href
