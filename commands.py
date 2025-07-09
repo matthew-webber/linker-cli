@@ -218,6 +218,7 @@ def _generate_consolidated_section(state):
 
             # Check if it's an internal link for hierarchy display
             is_internal = _is_internal_link(href, url)
+            print(f"Link '{href}' is {'NOT ' if not is_internal else ''}internal")
             internal_hierarchy = ""
 
             if is_internal:
@@ -225,19 +226,25 @@ def _generate_consolidated_section(state):
                     from lookup_utils import lookup_link_in_dsm
 
                     lookup_result = lookup_link_in_dsm(href, state.excel_data, state)
-                    if lookup_result.get("found"):
-                        hierarchy = lookup_result.get("proposed_hierarchy", {})
-                        segments = hierarchy.get("segments", [])
-                        if segments:
-                            root_name = hierarchy.get("root", "Sites")
-                            internal_hierarchy = (
-                                f"<div class='internal-hierarchy'>   → {root_name}"
-                            )
-                            for segment in segments:
-                                internal_hierarchy += f" / {segment}"
-                            internal_hierarchy += "</div>"
+                    hierarchy = (
+                        lookup_result.get("proposed_hierarchy", {})
+                        if lookup_result
+                        else {}
+                    )
+                    segments = hierarchy.get("segments", [])
+                    root_name = hierarchy.get("root", "Sites")
+                    # Always add the arrow section, even if segments is empty
+                    internal_hierarchy = (
+                        f"<div class='internal-hierarchy'>   → {root_name}"
+                    )
+                    for segment in segments:
+                        internal_hierarchy += f" / {segment}"
+                    internal_hierarchy += "</div>"
                 except Exception:
-                    pass
+                    # Still show the arrow with just the root if lookup fails
+                    internal_hierarchy = (
+                        "<div class='internal-hierarchy'>   → Sites</div>"
+                    )
 
             html += f"""
                 <div class="link-item">
