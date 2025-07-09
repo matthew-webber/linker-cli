@@ -206,10 +206,12 @@ def _generate_consolidated_section(state):
             # Determine status circle
             if status == 200:
                 circle = "🟢"
-            elif status >= 400:
+            elif status == 404:
                 circle = "🔴"
+            elif status == 0:
+                circle = "⚪"
             else:
-                circle = "🟡"
+                circle = f"🟡 [{status}]"
 
             # Generate copy value based on link type
             copy_value = _get_copy_value(href)
