@@ -3,12 +3,14 @@ Command handlers for Linker CLI.
 """
 
 import os
+import shutil
 import sys
 from io import StringIO
 from contextlib import redirect_stdout
 import subprocess
 import platform
 from pathlib import Path
+from datetime import datetime
 
 # from state import CLIState
 from dsm_utils import (
@@ -218,7 +220,6 @@ def _generate_consolidated_section(state):
 
             # Check if it's an internal link for hierarchy display
             is_internal = _is_internal_link(href, url)
-            print(f"Link '{href}' is {'NOT ' if not is_internal else ''}internal")
             internal_hierarchy = ""
 
             if is_internal:
@@ -321,19 +322,56 @@ def _is_internal_link(href, base_url):
         return False
 
 
+# def _generate_html_report(
+#     domain, row, show_page_output, migrate_output, links_output, consolidated_output
+# ):
+#     """Generate HTML report from captured outputs."""
+#     html_template = """
+
+# """
+
+#     from datetime import datetime
+
+#     timestamp = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+
+#     return html_template.format(
+#         domain=domain,
+#         row=row,
+#         consolidated_output=consolidated_output,
+#         show_page_output=show_page_output.replace("<", "&lt;").replace(">", "&gt;"),
+#         migrate_output=migrate_output.replace("<", "&lt;").replace(">", "&gt;"),
+#         links_output=links_output.replace("<", "&lt;").replace(">", "&gt;"),
+#         timestamp=timestamp,
+#     )
+
+
+def _get_report_template_dir():
+    """Ensure report template directories exist."""
+    template_dir = Path("templates/report")
+    template_dir.mkdir(exist_ok=True)
+
+    return template_dir
+
+
 def _generate_html_report(
     domain, row, show_page_output, migrate_output, links_output, consolidated_output
 ):
-    """Generate HTML report from captured outputs."""
-    html_template = """
+    """Generate HTML report from template and captured outputs."""
 
-"""
+    template_dir = _get_report_template_dir()
 
-    from datetime import datetime
+    # Read the template
+    template_path = template_dir / "template.html"
+
+    try:
+        with open(template_path, "r", encoding="utf-8") as f:
+            template = f.read()
+    except Exception as e:
+        print(f"⛔️ ERROR: Failed to read template:\n'{e}'")
 
     timestamp = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
 
-    return html_template.format(
+    return template.format(
         domain=domain,
         row=row,
         consolidated_output=consolidated_output,
@@ -342,6 +380,20 @@ def _generate_html_report(
         links_output=links_output.replace("<", "&lt;").replace(">", "&gt;"),
         timestamp=timestamp,
     )
+
+
+def _add_report_static_files_if_needed(reports_dir):
+    """If not already there, copy template static files to reports output
+    directory so they can be served with the HTML."""
+
+    template_dir = _get_report_template_dir()
+
+    # grab all .css and .js files from the template directory
+    for file in template_dir.glob("*"):
+        if file.suffix in {".css", ".js"}:
+            dest = reports_dir / file.name
+            if not dest.exists():
+                shutil.copy(file, dest)
 
 
 def cmd_report(args, state):
@@ -358,9 +410,13 @@ def cmd_report(args, state):
     domain = state.get_variable("DOMAIN") or "unknown"
     row = state.get_variable("ROW") or "unknown"
 
+    # Ensure the reports directory exists
+    reports_dir = Path("./reports")
+    reports_dir.mkdir(exist_ok=True)
+
     # Clean domain name for filename (remove spaces, special chars)
     clean_domain = re.sub(r"[^a-zA-Z0-9]", "_", domain.lower())
-    filename = f"./reports/{clean_domain}_{row}.html"
+    filename = f"./reports/{clean_domain}_{row}.html"  # TODO: replace _ with -
 
     print(f"📊 Generating report: {filename}")
 
@@ -396,6 +452,8 @@ def cmd_report(args, state):
         print(f"💡 Open the file in your browser to view the report")
     except Exception as e:
         print(f"❌ Failed to save report: {e}")
+
+    _add_report_static_files_if_needed(reports_dir)
 
 
 def cmd_check(args, state):
