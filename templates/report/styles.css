@@ -152,6 +152,21 @@ body {
     width: 14px;
     height: 14px;
 }
+.copy-anchor-btn {
+    background: #e67e22;
+    border: none;
+    border-radius: 4px;
+    padding: 4px 8px;
+    color: white;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    font-size: 12px;
+    font-weight: bold;
+}
+.copy-anchor-btn:hover {
+    background: #d35400;
+}
 .item-type {
     font-size: 12px;
     color: #666;

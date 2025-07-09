@@ -247,6 +247,16 @@ def _generate_consolidated_section(state):
                         "<div class='internal-hierarchy'>   → Sites</div>"
                     )
 
+            # Check if this is a tel: or mailto: link for special anchor copy button
+            is_contact_link = href.startswith(("tel:", "mailto:"))
+            anchor_copy_button = ""
+
+            if is_contact_link:
+                anchor_copy_button = f"""
+                        <button class="copy-anchor-btn" onclick="copyAnchorToClipboard(event, '{copy_value}', '{text}')" title="Copy as HTML anchor">
+                            &lt;/&gt;
+                        </button>"""
+
             html += f"""
                 <div class="link-item">
                     <div class="link-main">
@@ -255,7 +265,7 @@ def _generate_consolidated_section(state):
                             <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor">
                                 <path d="M16 1H4c-1.1 0-2 .9-2 2v14h2V3h12V1zm3 4H8c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h11c1.1 0 2-.9 2-2V7c0-1.1-.9-2-2-2zm0 16H8V7h11v14z"/>
                             </svg>
-                        </button>
+                        </button>{anchor_copy_button}
                         <span class="item-type">[{item_type.replace('_', ' ').title()}]</span>
                     </div>
                     {internal_hierarchy}
@@ -359,8 +369,8 @@ def _generate_html_report(
     )
 
 
-def _add_report_static_files_if_needed(reports_dir):
-    """If not already there, copy template static files to reports output
+def _sync_report_static_assets(reports_dir):
+    """Copy template static files to reports output
     directory so they can be served with the HTML."""
 
     template_dir = _get_report_template_dir()
@@ -369,8 +379,7 @@ def _add_report_static_files_if_needed(reports_dir):
     for file in template_dir.glob("*"):
         if file.suffix in {".css", ".js"}:
             dest = reports_dir / file.name
-            if not dest.exists():
-                shutil.copy(file, dest)
+            shutil.copy(file, dest)
 
 
 def cmd_report(args, state):
@@ -430,7 +439,7 @@ def cmd_report(args, state):
     except Exception as e:
         print(f"❌ Failed to save report: {e}")
 
-    _add_report_static_files_if_needed(reports_dir)
+    _sync_report_static_assets(reports_dir)
 
 
 def cmd_check(args, state):
