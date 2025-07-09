@@ -302,15 +302,21 @@ def _get_copy_value(href):
 
 
 def _is_internal_link(href, base_url):
-    """Check if a link is internal to the same domain."""
+    """Check if a link is internal to any of the migration domains."""
     from urllib.parse import urlparse
+    from constants import DOMAIN_MAPPING
 
     try:
-        href_domain = urlparse(href).netloc.lower()
-        base_domain = urlparse(base_url).netloc.lower()
+        parsed = urlparse(href)
+        href_hostname = parsed.hostname
 
-        # Check if domains match or if it's a relative link
-        return href_domain == base_domain or not href_domain
+        # Check if it's a relative link (no hostname)
+        if not href_hostname:
+            return True
+
+        # Check if the hostname is in our internal domains that need migration
+        internal_domains = set(DOMAIN_MAPPING.keys())
+        return href_hostname in internal_domains
     except Exception:
         return False
 
