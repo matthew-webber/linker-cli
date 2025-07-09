@@ -322,29 +322,6 @@ def _is_internal_link(href, base_url):
         return False
 
 
-# def _generate_html_report(
-#     domain, row, show_page_output, migrate_output, links_output, consolidated_output
-# ):
-#     """Generate HTML report from captured outputs."""
-#     html_template = """
-
-# """
-
-#     from datetime import datetime
-
-#     timestamp = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
-
-#     return html_template.format(
-#         domain=domain,
-#         row=row,
-#         consolidated_output=consolidated_output,
-#         show_page_output=show_page_output.replace("<", "&lt;").replace(">", "&gt;"),
-#         migrate_output=migrate_output.replace("<", "&lt;").replace(">", "&gt;"),
-#         links_output=links_output.replace("<", "&lt;").replace(">", "&gt;"),
-#         timestamp=timestamp,
-#     )
-
-
 def _get_report_template_dir():
     """Ensure report template directories exist."""
     template_dir = Path("templates/report")
