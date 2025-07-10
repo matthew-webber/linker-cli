@@ -8,7 +8,7 @@ DEBUG = False
 def sync_debug_with_state(state):
     """Sync the cached DEBUG value with the state."""
     global DEBUG
-    DEBUG = state.get_variable("DEBUG").lower() in ["true", "1", "yes", "on"]
+    DEBUG = state.get_variable("DEBUG")
 
 
 def debug_print(*msg):

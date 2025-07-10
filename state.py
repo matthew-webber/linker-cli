@@ -24,6 +24,9 @@ class CLIState:
         self.excel_data = None
         self.current_page_data = None
 
+        # Variables that should be returned as booleans
+        self.boolean_variables = {"INCLUDE_SIDEBAR", "DEBUG"}
+
         self.valid_variable_formats = {
             "URL": r"^https?://",
             "INCLUDE_SIDEBAR": r"^(true|false)$",
@@ -48,6 +51,17 @@ class CLIState:
 
     def get_variable(self, name):
         name = name.upper()
+        value = self.variables.get(name, "")
+        
+        # Convert boolean variables to actual booleans
+        if name in self.boolean_variables:
+            return value.lower() in ["true", "1", "yes", "on"]
+        
+        return value
+
+    def get_raw_variable(self, name):
+        """Get the raw string value without boolean conversion."""
+        name = name.upper()
         return self.variables.get(name, "")
 
     def list_variables(self):
@@ -64,12 +78,12 @@ class CLIState:
         missing = []
         invalid = []
         for var in required_vars:
-            if not self.get_variable(var):
+            if not self.get_raw_variable(var):
                 missing.append(var)
 
             if var in self.valid_variable_formats:
                 if not re.match(
-                    self.valid_variable_formats[var], self.get_variable(var)
+                    self.valid_variable_formats[var], self.get_raw_variable(var)
                 ):
                     invalid.append(var)
 

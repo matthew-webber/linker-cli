@@ -2,7 +2,9 @@
 Command handlers for Linker CLI.
 """
 
+import json
 import os
+import re
 import shutil
 import sys
 from io import StringIO
@@ -448,9 +450,6 @@ def cmd_check(args, state):
     selector = state.get_variable("SELECTOR")
     include_sidebar = state.get_variable("INCLUDE_SIDEBAR")
 
-    # transform string to boolean
-    include_sidebar = include_sidebar.lower() in ["true", "1", "yes"]
-
     # Validate required variables
     required_vars = ["URL", "SELECTOR"]
     missing_vars, invalid_vars = state.validate_required_vars(required_vars)
@@ -538,7 +537,7 @@ def cmd_clear(args):
 
 def cmd_debug(args, state):
     """Toggle debug mode."""
-    current_debug = state.get_variable("DEBUG").lower() in ["true", "1", "yes", "on"]
+    current_debug = state.get_variable("DEBUG")
 
     if not args:
         # Toggle current state
@@ -560,11 +559,7 @@ def cmd_debug(args, state):
 
 def cmd_sidebar(args, state):
     """Toggle sidebar inclusion in page extraction."""
-    current_value = state.get_variable("INCLUDE_SIDEBAR").lower() in [
-        "true",
-        "1",
-        "yes",
-    ]
+    current_value = state.get_variable("INCLUDE_SIDEBAR")
 
     if not args:
         # Toggle current state
