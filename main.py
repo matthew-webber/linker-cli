@@ -127,13 +127,9 @@ def main():
 
     while True:
         try:
-            # Create prompt showing loaded URL (e.g. )
-            url_indicator = (
-                f"({state.get_variable('URL')[:30]}...)"
-                if state.get_variable("URL")
-                else "(no url)"
-            )
-            prompt = f"linker_user {url_indicator} > "
+            # Create prompt with context information
+            context = generate_prompt_context("informational")
+            prompt = f"linker_user {context} > "
 
             user_input = input(prompt).strip()
             if not user_input:
@@ -149,6 +145,39 @@ def main():
         except EOFError:
             print("\nGoodbye.")
             break
+
+
+def generate_prompt_context(kind="url"):
+    """Generate context for the command prompt based on current state."""
+    match kind:
+        case "informational":
+            domain = state.get_variable("DOMAIN")
+            row = state.get_variable("ROW")
+            include_sidebar = state.get_variable("INCLUDE_SIDEBAR")
+            debug = state.get_variable("DEBUG")
+            cache_file = state.get_variable("CACHE_FILE")
+            debug_print(
+                f"Generating prompt context: domain={domain}, row={row}, "
+                f"include_sidebar={include_sidebar}, debug={debug}, cache_file={cache_file}"
+            )
+
+            primary_context = f"{domain}-{row}" if domain and row else "~"
+            c1 = " 🖼️" if include_sidebar else " 🪟"
+            c2 = " 🐛" if debug else " 🐞"
+            c3 = " 💾" if cache_file else " 📂"
+            return f"[{primary_context}{c1}{c2}{c3}]"
+        case "url":
+            url = state.get_variable("URL")
+            return f"[{url[:30]}...]" if url else "[~]"
+        case _:
+            return "[~]"
+    # if kind == "url":
+    #     return (
+    #         f"({state.get_variable('URL')[:30]}...)"
+    #         if state.get_variable("URL")
+    #         else "(~)"
+    #     )
+    # return "(~)"
 
 
 if __name__ == "__main__":
