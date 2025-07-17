@@ -317,7 +317,7 @@ set SELECTOR .content .body  # Nested selector
 
 ### Caching
 
-Analysis results are automatically cached in `migration_cache/`. Files are named based on the source (URL or spreadsheet location).
+Analysis results are automatically cached in `migration_cache/`. Files are named using the domain-row# format when available (e.g., `page_check_musc.edu-42.json`), or fall back to a sanitized URL format.
 
 ### Legacy Mode
 

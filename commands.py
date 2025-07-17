@@ -520,8 +520,18 @@ def generate_summary_report(include_sidebar, data):
 
 
 def cache_page_data(state, url, data):
-    sanitized_url = re.sub(r"[^\w\-_.]", "_", url)[:50]
-    cache_file = CACHE_DIR / f"page_check_{sanitized_url}.json"
+    # Use domain-row# format if available, fallback to URL
+    domain = state.get_variable("DOMAIN")
+    row = state.get_variable("ROW")
+
+    if domain and row:
+        cache_filename = f"page_check_{domain}-{row}.json"
+    else:
+        # Fallback to sanitized URL if domain/row not available
+        sanitized_url = re.sub(r"[^\w\-_.]", "_", url)[:50]
+        cache_filename = f"page_check_{sanitized_url}.json"
+
+    cache_file = CACHE_DIR / cache_filename
 
     with open(cache_file, "w", encoding="utf-8") as f:
         json.dump(data, f, indent=2, ensure_ascii=False)
