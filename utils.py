@@ -2,6 +2,9 @@
 Utility functions for Linker CLI.
 """
 
+import requests
+from urllib.parse import urlparse
+
 DEBUG = False
 
 
@@ -28,3 +31,18 @@ def set_debug(enabled, state):
     # Print debug message only if debugging is enabled
     if DEBUG:
         debug_print(f"Debugging is {'enabled' if enabled else 'disabled'}")
+
+
+def check_status_code(url):
+    try:
+        response = requests.head(url, allow_redirects=True, timeout=10)
+        return str(response.status_code)
+    except requests.RequestException:
+        return "0"
+
+
+def normalize_url(url):
+    parsed = urlparse(url)
+    if not parsed.scheme:
+        return "http://" + url
+    return url

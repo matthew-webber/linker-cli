@@ -30,7 +30,7 @@ import re
 import json
 
 from constants import DOMAINS
-from utils import debug_print, sync_debug_with_state
+from utils import debug_print, sync_debug_with_state, normalize_url
 
 CACHE_DIR = Path("migration_cache")
 CACHE_DIR.mkdir(exist_ok=True)
@@ -40,6 +40,9 @@ def _cache_page_data(state, url, data):
     # Use domain-row# format if available, fallback to URL
     domain = state.get_variable("DOMAIN")
     row = state.get_variable("ROW")
+    selector = state.get_variable("SELECTOR")
+    include_sidebar = state.get_variable("INCLUDE_SIDEBAR")
+    url = normalize_url(url)
 
     if domain and row:
         cache_filename = f"page_check_{domain}-{row}.json"
@@ -50,11 +53,49 @@ def _cache_page_data(state, url, data):
 
     cache_file = CACHE_DIR / cache_filename
 
+    # Create enhanced cache data with metadata
+    cache_data = {
+        "metadata": {
+            "url": url,
+            "domain": domain,
+            "row": row,
+            "timestamp": datetime.now().isoformat(),
+            "cache_filename": cache_filename,
+        },
+        "page_data": data,
+    }
+
     with open(cache_file, "w", encoding="utf-8") as f:
-        json.dump(data, f, indent=2, ensure_ascii=False)
+        json.dump(cache_data, f, indent=2, ensure_ascii=False)
 
     state.set_variable("CACHE_FILE", str(cache_file))
     print(f"✅ Data cached to {cache_file}")
+
+
+def _load_cached_page_data(cache_file_path):
+    """Load cached page data, handling both old and new cache formats.
+
+    Returns a tuple of (metadata_dict, page_data_dict).
+    For old format files, metadata will be empty dict.
+    """
+    try:
+        with open(cache_file_path, "r", encoding="utf-8") as f:
+            cached_content = json.load(f)
+
+        # Check if it's the new format (has metadata and page_data keys)
+        if (
+            isinstance(cached_content, dict)
+            and "metadata" in cached_content
+            and "page_data" in cached_content
+        ):
+            return cached_content["metadata"], cached_content["page_data"]
+        else:
+            # Old format - the entire content is the page data
+            return {}, cached_content
+
+    except (FileNotFoundError, json.JSONDecodeError, KeyError) as e:
+        debug_print(f"Error loading cache file {cache_file_path}: {e}")
+        return {}, {}
 
 
 def _capture_migrate_page_mapping_output(state):
@@ -819,7 +860,6 @@ def cmd_open(args, state):
 
 def cmd_report(args, state):
     """Generate an HTML report containing page data, migration mapping, and links analysis."""
-    # If no arguments provided, run check first to populate data
     if not args:
         print("🔄 Running 'check' to gather page data...")
         cmd_check([], state)

@@ -2,32 +2,15 @@
 Page extraction and analysis utilities for Linker CLI.
 """
 
-import re
-import json
 import requests
 from bs4 import BeautifulSoup
 from urllib.parse import urljoin, urlparse
 from pathlib import Path
 
-from utils import debug_print
+from utils import debug_print, normalize_url, check_status_code
 
 CACHE_DIR = Path("migration_cache")
 CACHE_DIR.mkdir(exist_ok=True)
-
-
-def normalize_url(url):
-    parsed = urlparse(url)
-    if not parsed.scheme:
-        return "http://" + url
-    return url
-
-
-def check_status_code(url):
-    try:
-        response = requests.head(url, allow_redirects=True, timeout=10)
-        return str(response.status_code)
-    except requests.RequestException:
-        return "0"
 
 
 def extract_links_from_page(url, selector="#main"):
@@ -113,15 +96,12 @@ def retrieve_page_data(url, selector="#main", include_sidebar=False):
                 debug_print(f"Warning: Error extracting sidebar content: {e}")
 
         data = {
-            "url": url,
             "links": main_links,
             "pdfs": main_pdfs,
             "embeds": main_embeds,
             "sidebar_links": sidebar_links,
             "sidebar_pdfs": sidebar_pdfs,
             "sidebar_embeds": sidebar_embeds,
-            "selector_used": selector,
-            "include_sidebar": include_sidebar,
         }
 
         total_main = len(main_links) + len(main_pdfs) + len(main_embeds)
