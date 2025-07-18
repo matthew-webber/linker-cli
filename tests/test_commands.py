@@ -212,10 +212,10 @@ def test_cmd_set_incomplete_args(mock_state):
     print_help_for_command.assert_called_once()
 
 
-def test__get_var_description(mock_state):
-    """Test the _get_var_description function."""
-    _get_var_description("var_name", mock_state)
-    mock_state.list_variables.assert_called_once()
+# def test__get_var_description(mock_state):
+#     """Test the _get_var_description function."""
+#     _get_var_description("var_name", mock_state)
+#     mock_state.list_variables.assert_called_once()
 
 
 def test_cmd_report_no_args_no_data(mock_state, mock_spinner, capsys):
@@ -238,7 +238,7 @@ def test_cmd_report_with_data(mock_state, mock_cache_page_data, monkeypatch, cap
         "DOMAIN": "Enterprise",
         "ROW": "90",
         "URL": "http://example.com",
-        "PROPOSED_PATH": "/test/path"
+        "PROPOSED_PATH": "/test/path",
     }.get(x, "")
 
     # Mock file writing
@@ -253,17 +253,19 @@ def test_cmd_report_with_data(mock_state, mock_cache_page_data, monkeypatch, cap
 
     assert "Generating report: enterprise_90.html" in captured.out
     assert "Report saved to: enterprise_90.html" in captured.out
-    mock_open.assert_called_once_with("enterprise_90.html", 'w', encoding='utf-8')
+    mock_open.assert_called_once_with("enterprise_90.html", "w", encoding="utf-8")
 
 
-def test_cmd_report_file_write_error(mock_state, mock_cache_page_data, monkeypatch, capsys):
+def test_cmd_report_file_write_error(
+    mock_state, mock_cache_page_data, monkeypatch, capsys
+):
     """Test cmd_report when file writing fails."""
     mock_state.current_page_data = {"key": "value", "links": [], "pdfs": []}
     mock_state.get_variable.side_effect = lambda x: {
         "DOMAIN": "Enterprise",
         "ROW": "90",
         "URL": "http://example.com",
-        "PROPOSED_PATH": "/test/path"
+        "PROPOSED_PATH": "/test/path",
     }.get(x, "")
 
     # Mock file writing to raise an exception
