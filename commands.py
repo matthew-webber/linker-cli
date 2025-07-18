@@ -98,6 +98,104 @@ def _load_cached_page_data(cache_file_path):
         return {}, {}
 
 
+def _find_cache_file_for_domain_row(domain, row):
+    """Find cache file matching a domain and row combination."""
+    if not domain or not row:
+        return None
+
+    cache_filename = f"page_check_{domain}-{row}.json"
+    cache_file = CACHE_DIR / cache_filename
+
+    if cache_file.exists():
+        debug_print(f"Found cache file for {domain}-{row}: {cache_file}")
+        return str(cache_file)
+
+    debug_print(f"No cache file found for {domain}-{row}")
+    return None
+
+
+def _find_cache_file_for_url(url):
+    """Find cache file matching a URL by searching through existing cache files."""
+    if not url:
+        return None
+
+    url = normalize_url(url)
+
+    # Search through all cache files
+    for cache_file in CACHE_DIR.glob("page_check_*.json"):
+        try:
+            metadata, _ = _load_cached_page_data(cache_file)
+            cached_url = metadata.get("url")
+
+            if cached_url and normalize_url(cached_url) == url:
+                debug_print(f"Found cache file for URL {url}: {cache_file}")
+                return str(cache_file)
+
+        except Exception as e:
+            debug_print(f"Error checking cache file {cache_file}: {e}")
+            continue
+
+    debug_print(f"No cache file found for URL: {url}")
+    return None
+
+
+def _update_cache_file_state(state, url=None, domain=None, row=None):
+    """Update the CACHE_FILE state variable based on current URL/domain/row.
+
+    This function will:
+    1. Try to find a matching cache file for the current context
+    2. Set CACHE_FILE if found, unset if not found or mismatched
+    3. Load the cached page data if a matching file is found
+    """
+    current_cache_file = state.get_variable("CACHE_FILE")
+
+    # Determine what we're looking for
+    search_url = url or state.get_variable("URL")
+    search_domain = domain or state.get_variable("DOMAIN")
+    search_row = row or state.get_variable("ROW")
+
+    found_cache_file = None
+
+    # First try domain/row if we have both
+    if search_domain and search_row:
+        found_cache_file = _find_cache_file_for_domain_row(search_domain, search_row)
+
+    # If no domain/row match, try URL
+    if not found_cache_file and search_url:
+        found_cache_file = _find_cache_file_for_url(search_url)
+
+    # Check if current cache file is still valid
+    if current_cache_file and found_cache_file != current_cache_file:
+        debug_print(
+            f"Current cache file {current_cache_file} doesn't match new context, unsetting"
+        )
+        state.set_variable("CACHE_FILE", "")
+        state.current_page_data = None
+
+    # Set new cache file if found
+    if found_cache_file:
+        state.set_variable("CACHE_FILE", found_cache_file)
+
+        # Load the cached page data
+        try:
+            metadata, page_data = _load_cached_page_data(found_cache_file)
+            if page_data:
+                state.current_page_data = page_data
+                print(f"📋 Loaded cached data from {Path(found_cache_file).name}")
+            else:
+                debug_print(
+                    f"Cache file {found_cache_file} exists but contains no page data"
+                )
+        except Exception as e:
+            debug_print(f"Error loading cached page data from {found_cache_file}: {e}")
+
+    elif not found_cache_file and current_cache_file:
+        # No matching cache file found, unset current one
+        state.set_variable("CACHE_FILE", "")
+        state.current_page_data = None
+        debug_print("No matching cache file found, unset CACHE_FILE")
+
+
 def _capture_migrate_page_mapping_output(state):
     """Capture the output from migrate page mapping functionality."""
     from migrate_hierarchy import print_hierarchy, print_proposed_hierarchy
@@ -765,6 +863,11 @@ def cmd_load(args, state):
         state.set_variable("DOMAIN", domain.get("full_name", "Domain Placeholder"))
         state.set_variable("ROW", str(row_num))
 
+        # Update cache file state for this new domain/row combination
+        _update_cache_file_state(
+            state, url=url, domain=domain.get("full_name"), row=str(row_num)
+        )
+
         warn = count_http(url) > 1
         print(f"✅ Loaded URL: {url[:60]}{'...' if len(url) > 60 else ''}")
         if warn:
@@ -860,12 +963,56 @@ def cmd_open(args, state):
 
 def cmd_report(args, state):
     """Generate an HTML report containing page data, migration mapping, and links analysis."""
-    if not args:
-        print("🔄 Running 'check' to gather page data...")
+
+    # Check if we need to run 'check' to gather page data
+    need_to_check = False
+
+    if not state.current_page_data:
+        need_to_check = True
+        reason = "No page data available"
+    else:
+        # Check if current page data matches current URL/domain/row context
+        current_url = state.get_variable("URL")
+        current_domain = state.get_variable("DOMAIN")
+        current_row = state.get_variable("ROW")
+        cache_file = state.get_variable("CACHE_FILE")
+
+        # If we have a cache file, verify it matches current context
+        if cache_file:
+            try:
+                metadata, _ = _load_cached_page_data(cache_file)
+                cached_url = metadata.get("url")
+                cached_domain = metadata.get("domain")
+                cached_row = metadata.get("row")
+
+                # Check if cached data matches current context
+                if (
+                    (current_url and cached_url != normalize_url(current_url))
+                    or (current_domain and cached_domain != current_domain)
+                    or (current_row and cached_row != current_row)
+                ):
+                    need_to_check = True
+                    reason = "Cached data doesn't match current context"
+
+            except Exception as e:
+                debug_print(f"Error validating cache file: {e}")
+                need_to_check = True
+                reason = "Error validating cached data"
+        else:
+            # No cache file but we have page data - this shouldn't normally happen
+            # but let's check if we need fresh data anyway
+            if current_url:
+                need_to_check = True
+                reason = "No cache file for current context"
+
+    if need_to_check:
+        print(f"🔄 Running 'check' to gather page data... ({reason})")
         cmd_check([], state)
         if not state.current_page_data:
             print("❌ Failed to gather page data. Cannot generate report.")
             return
+    else:
+        print("📋 Using existing cached page data for report")
 
     # Get domain and row for filename
     domain = state.get_variable("DOMAIN") or "unknown"
@@ -934,6 +1081,15 @@ def cmd_set(args, state):
                 print(f"📊 DSM file loaded successfully")
             except Exception as e:
                 print(f"❌ Failed to load DSM file: {e}")
+
+        # Update cache file state when URL is set
+        elif var_name == "URL" and value:
+            _update_cache_file_state(state, url=value)
+
+        # Update cache file state when DOMAIN or ROW is set
+        elif var_name in ["DOMAIN", "ROW"]:
+            _update_cache_file_state(state)
+
     else:
         print(f"❌ Unknown variable: {var_name}")
 
