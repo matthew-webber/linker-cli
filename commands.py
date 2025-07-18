@@ -13,6 +13,7 @@ import subprocess
 import platform
 from pathlib import Path
 from datetime import datetime
+import csv
 
 # from state import CLIState
 from dsm_utils import (
@@ -628,11 +629,290 @@ def print_help_for_command(command, state):
             for var in state.variables.keys():
                 print(f"  {var}")
             return
+        case "bulk_check":
+            print("Usage: bulk_check [csv_filename]")
+            print()
+            print("Process multiple pages from a CSV file and update with link counts.")
+            print(
+                "The CSV should have columns: domain, row, existing_url, no_links, no_pdfs, no_embeds"
+            )
+            print()
+            print("If no filename is provided, uses 'bulk_check_progress.csv'")
+            print(
+                "Only processes rows where no_links, no_pdfs, and no_embeds are empty."
+            )
+            print()
+            print("The command will:")
+            print("  1. Create a template CSV if it doesn't exist")
+            print("  2. Load each unprocessed row from the CSV")
+            print("  3. Run the check command on each URL")
+            print("  4. Update the CSV with link counts")
+            print("  5. Cache the page data for faster report generation")
+            return
 
 
 def display_domains():
     for i, domain in enumerate([domain.get("full_name") for domain in DOMAINS], 1):
         print(f"  {i:2}. {domain}")
+
+
+def cmd_bulk_check(args, state):
+    """Process multiple pages from a CSV file and update with link counts."""
+
+    # Default CSV filename
+    csv_filename = "bulk_check_progress.csv"
+
+    # Handle command arguments
+    if args:
+        if args[0] in ["-h", "--help", "help"]:
+            print("Usage: bulk_check [csv_filename]")
+            print()
+            print("Process multiple pages from a CSV file and update with link counts.")
+            print(
+                "The CSV should have columns: domain, row, existing_url, no_links, no_pdfs, no_embeds"
+            )
+            print()
+            print("If no filename is provided, uses 'bulk_check_progress.csv'")
+            print(
+                "Only processes rows where no_links, no_pdfs, and no_embeds are empty."
+            )
+            return
+        else:
+            csv_filename = args[0]
+
+    csv_path = Path(csv_filename)
+
+    # Check if CSV exists, create template if not
+    if not csv_path.exists():
+        print(f"📝 Creating template CSV file: {csv_filename}")
+        _create_bulk_check_template(csv_path)
+        print(
+            f"✅ Template created. Please fill in domain and row values, then run the command again."
+        )
+        return
+
+    # Load CSV and process unscanned rows
+    try:
+        rows_to_process = _load_bulk_check_csv(csv_path)
+        if not rows_to_process:
+            print("✅ All rows in the CSV have already been processed!")
+            return
+
+        print(f"📊 Found {len(rows_to_process)} rows to process")
+
+        # Ensure we have a DSM file loaded
+        if not state.excel_data:
+            dsm_file = get_latest_dsm_file()
+            if not dsm_file:
+                print(
+                    "❌ No DSM file found. Set DSM_FILE manually or place a dsm-*.xlsx file in the directory."
+                )
+                return
+            state.excel_data = load_spreadsheet(dsm_file)
+            state.set_variable("DSM_FILE", dsm_file)
+            print(f"📊 Loaded DSM file: {dsm_file}")
+
+        # Process each row
+        processed_count = 0
+        for i, row_data in enumerate(rows_to_process, 1):
+            domain_name = row_data["domain"]
+            row_num = row_data["row"]
+
+            print(
+                f"\n🔄 Processing {i}/{len(rows_to_process)}: {domain_name} row {row_num}"
+            )
+
+            # Load the URL using existing load functionality
+            try:
+                success = _bulk_load_url(state, domain_name, row_num)
+                if not success:
+                    print(f"❌ Failed to load URL for {domain_name} row {row_num}")
+                    continue
+
+                url = state.get_variable("URL")
+                selector = state.get_variable("SELECTOR")
+
+                if not selector:
+                    # Use default selector if none set
+                    state.set_variable("SELECTOR", "#main")
+                    selector = "#main"
+
+                # Run the check
+                print(f"  🔍 Checking: {url}")
+                try:
+                    data = retrieve_page_data(url, selector, include_sidebar=False)
+
+                    if "error" in data:
+                        print(f"  ❌ Error extracting data: {data['error']}")
+                        continue
+
+                    # Count items (excluding sidebar)
+                    links_count = len(data.get("links", []))
+                    pdfs_count = len(data.get("pdfs", []))
+                    embeds_count = len(data.get("embeds", []))
+
+                    print(
+                        f"  📊 Found: {links_count} links, {pdfs_count} PDFs, {embeds_count} embeds"
+                    )
+
+                    # Cache the data
+                    state.current_page_data = data
+                    _cache_page_data(state, url, data)
+
+                    # Update CSV with results
+                    _update_bulk_check_csv(
+                        csv_path,
+                        domain_name,
+                        row_num,
+                        url,
+                        links_count,
+                        pdfs_count,
+                        embeds_count,
+                    )
+                    processed_count += 1
+
+                except Exception as e:
+                    print(f"  ❌ Error during page check: {e}")
+                    debug_print(f"Full error: {e}")
+                    continue
+
+            except Exception as e:
+                print(f"❌ Error processing {domain_name} row {row_num}: {e}")
+                debug_print(f"Full error: {e}")
+                continue
+
+        print(
+            f"\n✅ Bulk check complete! Processed {processed_count}/{len(rows_to_process)} rows"
+        )
+        print(f"📋 Results saved to: {csv_filename}")
+
+    except Exception as e:
+        print(f"❌ Error processing CSV file: {e}")
+        debug_print(f"Full error: {e}")
+
+
+def _create_bulk_check_template(csv_path):
+    """Create a template CSV file for bulk checking."""
+    with open(csv_path, "w", newline="", encoding="utf-8") as f:
+        writer = csv.writer(f)
+        writer.writerow(
+            ["domain", "row", "existing_url", "no_links", "no_pdfs", "no_embeds"]
+        )
+        # Add a few example rows with comments
+        writer.writerow(
+            ["# Fill in domain and row, leave other columns empty", "", "", "", "", ""]
+        )
+        writer.writerow(["# Example: medicine.musc.edu", "42", "", "", "", ""])
+
+
+def _load_bulk_check_csv(csv_path):
+    """Load CSV file and return rows that need processing."""
+    rows_to_process = []
+
+    with open(csv_path, "r", encoding="utf-8") as f:
+        reader = csv.DictReader(f)
+
+        for row in reader:
+            # Skip comment rows and empty rows
+            if row["domain"].startswith("#") or not row["domain"].strip():
+                continue
+
+            # Skip rows that already have data (all three count fields are filled)
+            if (
+                row.get("no_links", "").strip()
+                and row.get("no_pdfs", "").strip()
+                and row.get("no_embeds", "").strip()
+            ):
+                continue
+
+            # Validate required fields
+            if not row.get("domain", "").strip() or not row.get("row", "").strip():
+                continue
+
+            try:
+                row_num = int(row["row"])
+                rows_to_process.append(
+                    {"domain": row["domain"].strip(), "row": row_num}
+                )
+            except ValueError:
+                continue
+
+    return rows_to_process
+
+
+def _bulk_load_url(state, domain_name, row_num):
+    """Load URL for bulk processing (simplified version of cmd_load)."""
+    # Find the domain configuration
+    domain = next(
+        (d for d in DOMAINS if d.get("full_name", "").lower() == domain_name.lower()),
+        None,
+    )
+
+    if not domain:
+        debug_print(f"Domain '{domain_name}' not found")
+        return False
+
+    df_header_row = domain.get("worksheet_header_row", 4) if domain else 4
+    df_header_row = df_header_row + 2
+
+    try:
+        df = state.excel_data.parse(
+            sheet_name=domain.get("full_name"),
+            header=domain.get("worksheet_header_row", 4),
+        )
+        url = get_existing_url(df, row_num - df_header_row)
+        proposed = get_proposed_url(df, row_num - df_header_row)
+
+        if not url:
+            debug_print(f"Could not find URL for {domain_name} row {row_num}")
+            return False
+
+        # Set the variables
+        state.set_variable("URL", url)
+        state.set_variable("PROPOSED_PATH", proposed)
+        state.set_variable("DOMAIN", domain.get("full_name", "Domain Placeholder"))
+        state.set_variable("ROW", str(row_num))
+
+        # Update cache file state for this new domain/row combination
+        _update_cache_file_state(
+            state, url=url, domain=domain.get("full_name"), row=str(row_num)
+        )
+
+        return True
+
+    except Exception as e:
+        debug_print(f"Error loading from spreadsheet: {e}")
+        return False
+
+
+def _update_bulk_check_csv(
+    csv_path, domain_name, row_num, url, links_count, pdfs_count, embeds_count
+):
+    """Update the CSV file with the results for a specific row."""
+    # Read all rows
+    rows = []
+    with open(csv_path, "r", encoding="utf-8") as f:
+        reader = csv.DictReader(f)
+        fieldnames = reader.fieldnames
+        for row in reader:
+            rows.append(row)
+
+    # Find and update the matching row
+    for row in rows:
+        if row["domain"].strip().lower() == domain_name.lower() and row[
+            "row"
+        ].strip() == str(row_num):
+            row["existing_url"] = url
+            row["no_links"] = str(links_count)
+            row["no_pdfs"] = str(pdfs_count)
+            row["no_embeds"] = str(embeds_count)
+            break
+
+    # Write back to file
+    with open(csv_path, "w", newline="", encoding="utf-8") as f:
+        writer = csv.DictWriter(f, fieldnames=fieldnames)
+        writer.writeheader()
+        writer.writerows(rows)
 
 
 def cmd_check(args, state):
@@ -738,6 +1018,7 @@ def cmd_help(args, state):
     print("Data Operations:")
     print("  load <domain> <row>   Load URL from spreadsheet")
     print("  check                 Analyze the current URL")
+    print("  bulk_check [csv]      Process multiple pages from CSV file")
     print("  migrate               Migrate the current URL")
     print()
     print("Link Migration:")
