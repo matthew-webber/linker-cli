@@ -36,15 +36,25 @@ CACHE_DIR = Path("migration_cache")
 CACHE_DIR.mkdir(exist_ok=True)
 
 
-def _capture_output(func, *args, **kwargs):
-    """Capture stdout from a function call and return it as a string."""
-    old_stdout = sys.stdout
-    sys.stdout = captured_output = StringIO()
-    try:
-        func(*args, **kwargs)
-        return captured_output.getvalue()
-    finally:
-        sys.stdout = old_stdout
+def _cache_page_data(state, url, data):
+    # Use domain-row# format if available, fallback to URL
+    domain = state.get_variable("DOMAIN")
+    row = state.get_variable("ROW")
+
+    if domain and row:
+        cache_filename = f"page_check_{domain}-{row}.json"
+    else:
+        # Fallback to sanitized URL if domain/row not available
+        sanitized_url = re.sub(r"[^\w\-_.]", "_", url)[:50]
+        cache_filename = f"page_check_{sanitized_url}.json"
+
+    cache_file = CACHE_DIR / cache_filename
+
+    with open(cache_file, "w", encoding="utf-8") as f:
+        json.dump(data, f, indent=2, ensure_ascii=False)
+
+    state.set_variable("CACHE_FILE", str(cache_file))
+    print(f"✅ Data cached to {cache_file}")
 
 
 def _capture_migrate_page_mapping_output(state):
@@ -70,6 +80,17 @@ def _capture_migrate_page_mapping_output(state):
         sys.stdout = old_stdout
 
     return output.getvalue()
+
+
+def _capture_output(func, *args, **kwargs):
+    """Capture stdout from a function call and return it as a string."""
+    old_stdout = sys.stdout
+    sys.stdout = captured_output = StringIO()
+    try:
+        func(*args, **kwargs)
+        return captured_output.getvalue()
+    finally:
+        sys.stdout = old_stdout
 
 
 def _generate_consolidated_section(state):
@@ -314,32 +335,26 @@ def _get_copy_value(href):
         return href
 
 
-def _is_internal_link(href, base_url):
-    """Check if a link is internal to any of the migration domains."""
-    from urllib.parse import urlparse
-    from constants import DOMAIN_MAPPING
-
-    try:
-        parsed = urlparse(href)
-        href_hostname = parsed.hostname
-
-        # Check if it's a relative link (no hostname)
-        if not href_hostname:
-            return True
-
-        # Check if the hostname is in our internal domains that need migration
-        internal_domains = set(DOMAIN_MAPPING.keys())
-        return href_hostname in internal_domains
-    except Exception:
-        return False
-
-
 def _get_report_template_dir():
     """Ensure report template directories exist."""
     template_dir = Path("templates/report")
     template_dir.mkdir(exist_ok=True)
 
     return template_dir
+
+
+def _get_var_description(var):
+    """Get description for a variable."""
+    descriptions = {
+        "URL": "Target URL to analyze/migrate",
+        "DOMAIN": "Current spreadsheet domain",
+        "ROW": "Current spreadsheet row number",
+        "SELECTOR": "CSS selector for content extraction",
+        "DSM_FILE": "Path to the DSM Excel file",
+        "CACHE_FILE": "Last cached data file path",
+        "PROPOSED_PATH": "Proposed URL path for migration (e.g. /foo/bar/baz)",
+    }
+    return descriptions.get(var, "User-defined variable")
 
 
 def _generate_html_report(
@@ -371,6 +386,87 @@ def _generate_html_report(
     )
 
 
+def _generate_summary_report(include_sidebar, data):
+    links_count = len(data.get("links", []))
+    pdfs_count = len(data.get("pdfs", []))
+    embeds_count = len(data.get("embeds", []))
+
+    # Include sidebar counts in summary
+    sidebar_links_count = len(data.get("sidebar_links", []))
+    sidebar_pdfs_count = len(data.get("sidebar_pdfs", []))
+    sidebar_embeds_count = len(data.get("sidebar_embeds", []))
+
+    total_links = links_count + sidebar_links_count
+    total_pdfs = pdfs_count + sidebar_pdfs_count
+    total_embeds = embeds_count + sidebar_embeds_count
+
+    if include_sidebar and (
+        sidebar_links_count > 0 or sidebar_pdfs_count > 0 or sidebar_embeds_count > 0
+    ):
+        print(
+            f"📊 Main content: {links_count} links, {pdfs_count} PDFs, {embeds_count} embeds"
+        )
+        print(
+            f"📊 Sidebar content: {sidebar_links_count} links, {sidebar_pdfs_count} PDFs, {sidebar_embeds_count} embeds"
+        )
+        print(
+            f"📊 Total: {total_links} links, {total_pdfs} PDFs, {total_embeds} embeds"
+        )
+    else:
+        print(
+            f"📊 Summary: {total_links} links, {total_pdfs} PDFs, {total_embeds} embeds found"
+        )
+
+
+def _is_internal_link(href, base_url):
+    """Check if a link is internal to any of the migration domains."""
+    from urllib.parse import urlparse
+    from constants import DOMAIN_MAPPING
+
+    try:
+        parsed = urlparse(href)
+        href_hostname = parsed.hostname
+
+        # Check if it's a relative link (no hostname)
+        if not href_hostname:
+            return True
+
+        # Check if the hostname is in our internal domains that need migration
+        internal_domains = set(DOMAIN_MAPPING.keys())
+        return href_hostname in internal_domains
+    except Exception:
+        return False
+
+
+def _open_file_in_default_app(file_path):
+    """Open a file in its default application based on the OS."""
+    system = platform.system()
+    file_path = Path(file_path).resolve()  # Get absolute path
+
+    if system == "Darwin":  # macOS
+        subprocess.run(["open", str(file_path)], check=True)
+    elif system == "Windows":
+        subprocess.run(["start", "", str(file_path)], shell=True, check=True)
+    elif system == "Linux":
+        subprocess.run(["xdg-open", str(file_path)], check=True)
+    else:
+        raise OSError(f"Unsupported operating system: {system}")
+
+
+def _open_url_in_browser(url):
+    """Open a URL in the default web browser."""
+    system = platform.system()
+
+    if system == "Darwin":  # macOS
+        subprocess.run(["open", url], check=True)
+    elif system == "Windows":
+        subprocess.run(["start", "", url], shell=True, check=True)
+    elif system == "Linux":
+        subprocess.run(["xdg-open", url], check=True)
+    else:
+        raise OSError(f"Unsupported operating system: {system}")
+
+
 def _sync_report_static_assets(reports_dir):
     """Copy template static files to reports output
     directory so they can be served with the HTML."""
@@ -384,64 +480,20 @@ def _sync_report_static_assets(reports_dir):
             shutil.copy(file, dest)
 
 
-def cmd_report(args, state):
-    """Generate an HTML report containing page data, migration mapping, and links analysis."""
-    # If no arguments provided, run check first to populate data
-    if not args:
-        print("🔄 Running 'check' to gather page data...")
-        cmd_check([], state)
-        if not state.current_page_data:
-            print("❌ Failed to gather page data. Cannot generate report.")
+def print_help_for_command(command, state):
+    # switch case for command help
+    match command:
+        case "set":
+            print("Usage: set <VARIABLE> <value>")
+            print("Available variables:")
+            for var in state.variables.keys():
+                print(f"  {var}")
             return
 
-    # Get domain and row for filename
-    domain = state.get_variable("DOMAIN") or "unknown"
-    row = state.get_variable("ROW") or "unknown"
 
-    # Ensure the reports directory exists
-    reports_dir = Path("./reports")
-    reports_dir.mkdir(exist_ok=True)
-
-    # Clean domain name for filename (remove spaces, special chars)
-    clean_domain = re.sub(r"[^a-zA-Z0-9]", "_", domain.lower())
-    filename = f"./reports/{clean_domain}_{row}.html"  # TODO: replace _ with -
-
-    print(f"📊 Generating report: {filename}")
-
-    # Capture output from each command
-    print("  ▶ Capturing page data...")
-    if state.current_page_data:
-        show_page_output = _capture_output(display_page_data, state.current_page_data)
-    else:
-        show_page_output = "❌ No page data available. Run 'check' first."
-
-    print("  ▶ Capturing migration mapping...")
-    migrate_output = _capture_migrate_page_mapping_output(state)
-
-    print("  ▶ Capturing links analysis...")
-    from lookup_utils import analyze_page_links_for_migration
-
-    links_output = _capture_output(analyze_page_links_for_migration, state)
-
-    print("  ▶ Generating consolidated summary...")
-    consolidated_output = _generate_consolidated_section(state)
-
-    # Generate HTML
-    print("  ▶ Generating HTML...")
-    html_content = _generate_html_report(
-        domain, row, show_page_output, migrate_output, links_output, consolidated_output
-    )
-
-    # Write to file
-    try:
-        with open(filename, "w", encoding="utf-8") as f:
-            f.write(html_content)
-        print(f"✅ Report saved to: {filename}")
-        print(f"💡 Open the file in your browser to view the report")
-    except Exception as e:
-        print(f"❌ Failed to save report: {e}")
-
-    _sync_report_static_assets(reports_dir)
+def display_domains():
+    for i, domain in enumerate([domain.get("full_name") for domain in DOMAINS], 1):
+        print(f"  {i:2}. {domain}")
 
 
 def cmd_check(args, state):
@@ -476,68 +528,15 @@ def cmd_check(args, state):
 
     state.current_page_data = data
 
-    cache_page_data(state, url, data)
+    _cache_page_data(state, url, data)
 
     if "error" in data:
         print(f"❌ Failed to extract data: {data['error']}")
         return
 
-    generate_summary_report(include_sidebar, data)
+    _generate_summary_report(include_sidebar, data)
 
     print("💡 Use 'show page' to see detailed results")
-
-
-def generate_summary_report(include_sidebar, data):
-    links_count = len(data.get("links", []))
-    pdfs_count = len(data.get("pdfs", []))
-    embeds_count = len(data.get("embeds", []))
-
-    # Include sidebar counts in summary
-    sidebar_links_count = len(data.get("sidebar_links", []))
-    sidebar_pdfs_count = len(data.get("sidebar_pdfs", []))
-    sidebar_embeds_count = len(data.get("sidebar_embeds", []))
-
-    total_links = links_count + sidebar_links_count
-    total_pdfs = pdfs_count + sidebar_pdfs_count
-    total_embeds = embeds_count + sidebar_embeds_count
-
-    if include_sidebar and (
-        sidebar_links_count > 0 or sidebar_pdfs_count > 0 or sidebar_embeds_count > 0
-    ):
-        print(
-            f"📊 Main content: {links_count} links, {pdfs_count} PDFs, {embeds_count} embeds"
-        )
-        print(
-            f"📊 Sidebar content: {sidebar_links_count} links, {sidebar_pdfs_count} PDFs, {sidebar_embeds_count} embeds"
-        )
-        print(
-            f"📊 Total: {total_links} links, {total_pdfs} PDFs, {total_embeds} embeds"
-        )
-    else:
-        print(
-            f"📊 Summary: {total_links} links, {total_pdfs} PDFs, {total_embeds} embeds found"
-        )
-
-
-def cache_page_data(state, url, data):
-    # Use domain-row# format if available, fallback to URL
-    domain = state.get_variable("DOMAIN")
-    row = state.get_variable("ROW")
-
-    if domain and row:
-        cache_filename = f"page_check_{domain}-{row}.json"
-    else:
-        # Fallback to sanitized URL if domain/row not available
-        sanitized_url = re.sub(r"[^\w\-_.]", "_", url)[:50]
-        cache_filename = f"page_check_{sanitized_url}.json"
-
-    cache_file = CACHE_DIR / cache_filename
-
-    with open(cache_file, "w", encoding="utf-8") as f:
-        json.dump(data, f, indent=2, ensure_ascii=False)
-
-    state.set_variable("CACHE_FILE", str(cache_file))
-    print(f"✅ Data cached to {cache_file}")
 
 
 def cmd_clear(args):
@@ -745,80 +744,6 @@ def cmd_migrate(args, state):
     migrate(state, url=url)
 
 
-def cmd_set(args, state):
-    if len(args) < 2:
-        return print_help_for_command("set", state)
-    var_name = args[0].upper()
-    value = " ".join(args[1:])
-    if state.set_variable(var_name, value):
-        print(f"✅ {var_name} => {value}")
-
-        # Special handling for certain variables
-
-        # Automatically load DSM_FILE if set
-        if var_name == "DSM_FILE" and value:
-            try:
-                state.excel_data = load_spreadsheet(value)
-                print(f"📊 DSM file loaded successfully")
-            except Exception as e:
-                print(f"❌ Failed to load DSM file: {e}")
-    else:
-        print(f"❌ Unknown variable: {var_name}")
-
-
-def print_help_for_command(command, state):
-    # switch case for command help
-    match command:
-        case "set":
-            print("Usage: set <VARIABLE> <value>")
-            print("Available variables:")
-            for var in state.variables.keys():
-                print(f"  {var}")
-            return
-
-
-def cmd_show(args, state):
-    if not args:
-        state.list_variables()
-        return
-    target = args[0].lower()
-    if target == "variables" or target == "vars":
-        state.list_variables()
-    elif target == "domains":
-        if not state.excel_data:
-            print("❌ No DSM file loaded. Set DSM_FILE first.")
-            return
-        print(f"\n📋 Available domains ({len(DOMAINS)}):")
-        display_domains()
-    elif target == "page" or target == "data":
-        if state.current_page_data:
-            display_page_data(state.current_page_data)
-        else:
-            print("❌ No page data loaded. Run 'check' first.")
-    else:
-        print(f"❌ Unknown show target: {target}")
-        print("Available targets: variables, domains, page")
-
-
-def _get_var_description(var):
-    """Get description for a variable."""
-    descriptions = {
-        "URL": "Target URL to analyze/migrate",
-        "DOMAIN": "Current spreadsheet domain",
-        "ROW": "Current spreadsheet row number",
-        "SELECTOR": "CSS selector for content extraction",
-        "DSM_FILE": "Path to the DSM Excel file",
-        "CACHE_FILE": "Last cached data file path",
-        "PROPOSED_PATH": "Proposed URL path for migration (e.g. /foo/bar/baz)",
-    }
-    return descriptions.get(var, "User-defined variable")
-
-
-def display_domains():
-    for i, domain in enumerate([domain.get("full_name") for domain in DOMAINS], 1):
-        print(f"  {i:2}. {domain}")
-
-
 def cmd_open(args, state):
     """Open different resources in their default applications."""
     if not args:
@@ -892,30 +817,105 @@ def cmd_open(args, state):
         print("Available targets: dsm, page, url, report")
 
 
-def _open_file_in_default_app(file_path):
-    """Open a file in its default application based on the OS."""
-    system = platform.system()
-    file_path = Path(file_path).resolve()  # Get absolute path
+def cmd_report(args, state):
+    """Generate an HTML report containing page data, migration mapping, and links analysis."""
+    # If no arguments provided, run check first to populate data
+    if not args:
+        print("🔄 Running 'check' to gather page data...")
+        cmd_check([], state)
+        if not state.current_page_data:
+            print("❌ Failed to gather page data. Cannot generate report.")
+            return
 
-    if system == "Darwin":  # macOS
-        subprocess.run(["open", str(file_path)], check=True)
-    elif system == "Windows":
-        subprocess.run(["start", "", str(file_path)], shell=True, check=True)
-    elif system == "Linux":
-        subprocess.run(["xdg-open", str(file_path)], check=True)
+    # Get domain and row for filename
+    domain = state.get_variable("DOMAIN") or "unknown"
+    row = state.get_variable("ROW") or "unknown"
+
+    # Ensure the reports directory exists
+    reports_dir = Path("./reports")
+    reports_dir.mkdir(exist_ok=True)
+
+    # Clean domain name for filename (remove spaces, special chars)
+    clean_domain = re.sub(r"[^a-zA-Z0-9]", "_", domain.lower())
+    filename = f"./reports/{clean_domain}_{row}.html"  # TODO: replace _ with -
+
+    print(f"📊 Generating report: {filename}")
+
+    # Capture output from each command
+    print("  ▶ Capturing page data...")
+    if state.current_page_data:
+        show_page_output = _capture_output(display_page_data, state.current_page_data)
     else:
-        raise OSError(f"Unsupported operating system: {system}")
+        show_page_output = "❌ No page data available. Run 'check' first."
+
+    print("  ▶ Capturing migration mapping...")
+    migrate_output = _capture_migrate_page_mapping_output(state)
+
+    print("  ▶ Capturing links analysis...")
+    from lookup_utils import analyze_page_links_for_migration
+
+    links_output = _capture_output(analyze_page_links_for_migration, state)
+
+    print("  ▶ Generating consolidated summary...")
+    consolidated_output = _generate_consolidated_section(state)
+
+    # Generate HTML
+    print("  ▶ Generating HTML...")
+    html_content = _generate_html_report(
+        domain, row, show_page_output, migrate_output, links_output, consolidated_output
+    )
+
+    # Write to file
+    try:
+        with open(filename, "w", encoding="utf-8") as f:
+            f.write(html_content)
+        print(f"✅ Report saved to: {filename}")
+        print(f"💡 Open the file in your browser to view the report")
+    except Exception as e:
+        print(f"❌ Failed to save report: {e}")
+
+    _sync_report_static_assets(reports_dir)
 
 
-def _open_url_in_browser(url):
-    """Open a URL in the default web browser."""
-    system = platform.system()
+def cmd_set(args, state):
+    if len(args) < 2:
+        return print_help_for_command("set", state)
+    var_name = args[0].upper()
+    value = " ".join(args[1:])
+    if state.set_variable(var_name, value):
+        print(f"✅ {var_name} => {value}")
 
-    if system == "Darwin":  # macOS
-        subprocess.run(["open", url], check=True)
-    elif system == "Windows":
-        subprocess.run(["start", "", url], shell=True, check=True)
-    elif system == "Linux":
-        subprocess.run(["xdg-open", url], check=True)
+        # Special handling for certain variables
+
+        # Automatically load DSM_FILE if set
+        if var_name == "DSM_FILE" and value:
+            try:
+                state.excel_data = load_spreadsheet(value)
+                print(f"📊 DSM file loaded successfully")
+            except Exception as e:
+                print(f"❌ Failed to load DSM file: {e}")
     else:
-        raise OSError(f"Unsupported operating system: {system}")
+        print(f"❌ Unknown variable: {var_name}")
+
+
+def cmd_show(args, state):
+    if not args:
+        state.list_variables()
+        return
+    target = args[0].lower()
+    if target == "variables" or target == "vars":
+        state.list_variables()
+    elif target == "domains":
+        if not state.excel_data:
+            print("❌ No DSM file loaded. Set DSM_FILE first.")
+            return
+        print(f"\n📋 Available domains ({len(DOMAINS)}):")
+        display_domains()
+    elif target == "page" or target == "data":
+        if state.current_page_data:
+            display_page_data(state.current_page_data)
+        else:
+            print("❌ No page data loaded. Run 'check' first.")
+    else:
+        print(f"❌ Unknown show target: {target}")
+        print("Available targets: variables, domains, page")
