@@ -1344,6 +1344,18 @@ def cmd_report(args, state):
 
     _sync_report_static_assets(reports_dir)
 
+    open_report_now = (
+        input("Do you want to open the report in your browser now? [Y/n]: ")
+        .strip()
+        .lower()
+    )
+    if open_report_now in ["", "y", "yes"]:
+        try:
+            cmd_open(["report"], state)
+        except Exception as e:
+            print(f"❌ Failed to open report: {e}")
+            debug_print(f"Full error: {e}")
+
 
 def cmd_set(args, state):
     if len(args) < 2:
