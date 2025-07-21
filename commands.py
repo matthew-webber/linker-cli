@@ -634,20 +634,24 @@ def print_help_for_command(command, state):
             print()
             print("Process multiple pages from a CSV file and update with link counts.")
             print(
-                "The CSV should have columns: domain, row, existing_url, no_links, no_pdfs, no_embeds"
+                "The CSV should have columns: domain, row, existing_url, no_links, no_pdfs, no_embeds, % difficulty"
             )
             print()
             print("If no filename is provided, uses 'bulk_check_progress.csv'")
             print(
-                "Only processes rows where no_links, no_pdfs, and no_embeds are empty."
+                "Only processes rows where no_links, no_pdfs, no_embeds, and % difficulty are empty."
             )
             print()
             print("The command will:")
             print("  1. Create a template CSV if it doesn't exist")
             print("  2. Load each unprocessed row from the CSV")
             print("  3. Run the check command on each URL")
-            print("  4. Update the CSV with link counts")
+            print("  4. Update the CSV with link counts and difficulty percentage")
             print("  5. Cache the page data for faster report generation")
+            print()
+            print(
+                "% difficulty represents the percentage of non-easy links (tel: and mailto: are easy)"
+            )
             return
 
 
@@ -669,12 +673,12 @@ def cmd_bulk_check(args, state):
             print()
             print("Process multiple pages from a CSV file and update with link counts.")
             print(
-                "The CSV should have columns: domain, row, existing_url, no_links, no_pdfs, no_embeds"
+                "The CSV should have columns: domain, row, existing_url, no_links, no_pdfs, no_embeds, % difficulty"
             )
             print()
             print("If no filename is provided, uses 'bulk_check_progress.csv'")
             print(
-                "Only processes rows where no_links, no_pdfs, and no_embeds are empty."
+                "Only processes rows where no_links, no_pdfs, no_embeds, and % difficulty are empty."
             )
             return
         else:
@@ -751,8 +755,13 @@ def cmd_bulk_check(args, state):
                     pdfs_count = len(data.get("pdfs", []))
                     embeds_count = len(data.get("embeds", []))
 
+                    # Calculate difficulty percentage
+                    difficulty_pct = _calculate_difficulty_percentage(
+                        data.get("links", [])
+                    )
+
                     print(
-                        f"  📊 Found: {links_count} links, {pdfs_count} PDFs, {embeds_count} embeds"
+                        f"  📊 Found: {links_count} links, {pdfs_count} PDFs, {embeds_count} embeds, {difficulty_pct:.1%} difficulty"
                     )
 
                     # Cache the data
@@ -768,6 +777,7 @@ def cmd_bulk_check(args, state):
                         links_count,
                         pdfs_count,
                         embeds_count,
+                        difficulty_pct,
                     )
                     processed_count += 1
 
@@ -791,18 +801,61 @@ def cmd_bulk_check(args, state):
         debug_print(f"Full error: {e}")
 
 
+def _calculate_difficulty_percentage(links_data):
+    """Calculate the difficulty percentage based on easy links (tel: and mailto:).
+
+    Returns a float between 0 and 1, where:
+    - 0 means all links are easy (tel: or mailto:)
+    - 1 means no links are easy
+    - 0.5 means half the links are easy
+    """
+    if not links_data:
+        return 0.0
+
+    total_links = len(links_data)
+    if total_links == 0:
+        return 0.0
+
+    easy_links = 0
+    for link in links_data:
+        # link is a tuple of (text, href, status)
+        href = link[1] if len(link) > 1 else ""
+        if href.startswith(("tel:", "mailto:")):
+            easy_links += 1
+
+    # Calculate difficulty as (total - easy) / total
+    difficulty = (total_links - easy_links) / total_links
+    return difficulty
+
+
 def _create_bulk_check_template(csv_path):
     """Create a template CSV file for bulk checking."""
     with open(csv_path, "w", newline="", encoding="utf-8") as f:
         writer = csv.writer(f)
         writer.writerow(
-            ["domain", "row", "existing_url", "no_links", "no_pdfs", "no_embeds"]
+            [
+                "domain",
+                "row",
+                "existing_url",
+                "no_links",
+                "no_pdfs",
+                "no_embeds",
+                "% difficulty",
+            ]
         )
         # Add a few example rows with comments
         writer.writerow(
-            ["# Fill in domain and row, leave other columns empty", "", "", "", "", ""]
+            [
+                "# Fill in domain and row, leave other columns empty",
+                "",
+                "",
+                "",
+                "",
+                "",
+                "",
+            ]
         )
-        writer.writerow(["# Example: medicine.musc.edu", "42", "", "", "", ""])
+        writer.writerow(["# Example: medicine.musc.edu", "42", "", "", "", "", ""])
 
 
 def _load_bulk_check_csv(csv_path):
@@ -817,11 +870,12 @@ def _load_bulk_check_csv(csv_path):
             if row["domain"].startswith("#") or not row["domain"].strip():
                 continue
 
-            # Skip rows that already have data (all three count fields are filled)
+            # Skip rows that already have data (all count fields are filled)
             if (
                 row.get("no_links", "").strip()
                 and row.get("no_pdfs", "").strip()
                 and row.get("no_embeds", "").strip()
+                and row.get("% difficulty", "").strip()
             ):
                 continue
 
@@ -886,7 +940,14 @@ def _bulk_load_url(state, domain_name, row_num):
 
 
 def _update_bulk_check_csv(
-    csv_path, domain_name, row_num, url, links_count, pdfs_count, embeds_count
+    csv_path,
+    domain_name,
+    row_num,
+    url,
+    links_count,
+    pdfs_count,
+    embeds_count,
+    difficulty_pct,
 ):
     """Update the CSV file with the results for a specific row."""
     # Read all rows
@@ -906,6 +967,7 @@ def _update_bulk_check_csv(
             row["no_links"] = str(links_count)
             row["no_pdfs"] = str(pdfs_count)
             row["no_embeds"] = str(embeds_count)
+            row["% difficulty"] = str(difficulty_pct)
             break
 
     # Write back to file
