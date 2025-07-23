@@ -44,7 +44,7 @@ A command-line tool for analyzing and migrating web page content, designed to he
 3. **Verify installation**
 
    ```bash
-   python run.sh --help
+   python run --help
    ```
 
    You should see help text for the Linker CLI.
@@ -54,10 +54,10 @@ A command-line tool for analyzing and migrating web page content, designed to he
 Start the interactive CLI:
 
 ```bash
-python run.sh
+python run
 # or
-chmod +x run.sh  # Make the script executable
-./run.sh
+chmod +x run  # Make the script executable
+./run
 ```
 
 You'll see a prompt like:
@@ -156,7 +156,7 @@ The CLI uses these variables to track state:
 
 ```bash
 # Start the CLI
-python run.sh
+python run
 
 # Set URL and analyze
 set URL https://education.musc.edu/students/ose/team
@@ -168,7 +168,7 @@ show page
 
 ```bash
 # Start the CLI
-python run.sh
+python run
 
 # Load from spreadsheet (case-insensitive domain names)
 load education 23
@@ -253,7 +253,7 @@ The CLI recognizes these domain sheet names (case-insensitive):
 **"No DSM file found"**
 
 - Ensure your Excel file is named `dsm-MMDD.xlsx`
-- Place it in the same directory as `run.sh`
+- Place it in the same directory as `run`
 - Or manually set: `set DSM_FILE path/to/your/file.xlsx`
 
 **"Domain not found"**
@@ -293,7 +293,7 @@ This shows:
 
 ```
 linker-cli/
-├── run.sh                 # Main CLI application
+├── run                 # Main CLI application
 ├── migrate_hierarchy.py   # Migration hierarchy logic
 ├── requirements.txt       # Python dependencies
 ├── README.md             # This file
