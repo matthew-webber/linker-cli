@@ -278,3 +278,20 @@ def test_cmd_report_file_write_error(
     captured = capsys.readouterr()
 
     assert "Failed to save report: Permission denied" in captured.out
+
+
+def test_cmd_report_multi_rows(monkeypatch, mock_state):
+    """Generate reports for multiple rows in one call."""
+
+    mock_generate = MagicMock(return_value="file.html")
+    fake_load = MagicMock()
+
+    monkeypatch.setattr("commands._generate_report", mock_generate)
+    monkeypatch.setattr("commands.cmd_load", fake_load)
+    monkeypatch.setattr("builtins.input", lambda *args, **kwargs: "n")
+
+    cmd_report(["Enterprise", "10", "11"], mock_state)
+
+    fake_load.assert_any_call(["Enterprise", "10"], mock_state)
+    fake_load.assert_any_call(["Enterprise", "11"], mock_state)
+    assert mock_generate.call_count == 2

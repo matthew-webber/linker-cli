@@ -73,6 +73,11 @@ def _cache_page_data(state, url, data):
     print(f"✅ Data cached to {cache_file}")
 
 
+def cache_page_data(state, url, data):
+    """Public wrapper for testing purposes."""
+    return _cache_page_data(state, url, data)
+
+
 def _load_cached_page_data(cache_file_path):
     """Load cached page data, handling both old and new cache formats.
 
@@ -1312,8 +1317,8 @@ def cmd_open(args, state):
         print("Available targets: dsm, page, url, report")
 
 
-def cmd_report(args, state):
-    """Generate an HTML report containing page data, migration mapping, and links analysis."""
+def _generate_report(state, prompt_open=True):
+    """Generate a report for the currently loaded domain/row."""
 
     # Check if we need to run 'check' to gather page data
     need_to_check = False
@@ -1322,13 +1327,11 @@ def cmd_report(args, state):
         need_to_check = True
         reason = "No page data available"
     else:
-        # Check if current page data matches current URL/domain/row context
         current_url = state.get_variable("URL")
         current_domain = state.get_variable("DOMAIN")
         current_row = state.get_variable("ROW")
         cache_file = state.get_variable("CACHE_FILE")
 
-        # If we have a cache file, verify it matches current context
         if cache_file:
             try:
                 metadata, _ = _load_cached_page_data(cache_file)
@@ -1336,7 +1339,6 @@ def cmd_report(args, state):
                 cached_domain = metadata.get("domain")
                 cached_row = metadata.get("row")
 
-                # Check if cached data matches current context
                 if (
                     (current_url and cached_url != normalize_url(current_url))
                     or (current_domain and cached_domain != current_domain)
@@ -1350,8 +1352,6 @@ def cmd_report(args, state):
                 need_to_check = True
                 reason = "Error validating cached data"
         else:
-            # No cache file but we have page data - this shouldn't normally happen
-            # but let's check if we need fresh data anyway
             if current_url:
                 need_to_check = True
                 reason = "No cache file for current context"
@@ -1361,25 +1361,21 @@ def cmd_report(args, state):
         cmd_check([], state)
         if not state.current_page_data:
             print("❌ Failed to gather page data. Cannot generate report.")
-            return
+            return None
     else:
         print("📋 Using existing cached page data for report")
 
-    # Get domain and row for filename
     domain = state.get_variable("DOMAIN") or "unknown"
     row = state.get_variable("ROW") or "unknown"
 
-    # Ensure the reports directory exists
     reports_dir = Path("./reports")
     reports_dir.mkdir(exist_ok=True)
 
-    # Clean domain name for filename (remove spaces, special chars)
     clean_domain = re.sub(r"[^a-zA-Z0-9]", "_", domain.lower())
-    filename = f"./reports/{clean_domain}_{row}.html"  # TODO: replace _ with -
+    filename = f"./reports/{clean_domain}_{row}.html"
 
     print(f"📊 Generating report: {filename}")
 
-    # Capture output from each command
     print("  ▶ Capturing page data...")
     if state.current_page_data:
         show_page_output = _capture_output(display_page_data, state.current_page_data)
@@ -1397,13 +1393,11 @@ def cmd_report(args, state):
     print("  ▶ Generating consolidated summary...")
     consolidated_output = _generate_consolidated_section(state)
 
-    # Generate HTML
     print("  ▶ Generating HTML...")
     html_content = _generate_html_report(
         domain, row, show_page_output, migrate_output, links_output, consolidated_output
     )
 
-    # Write to file
     try:
         with open(filename, "w", encoding="utf-8") as f:
             f.write(html_content)
@@ -1414,17 +1408,51 @@ def cmd_report(args, state):
 
     _sync_report_static_assets(reports_dir)
 
-    open_report_now = (
-        input("Do you want to open the report in your browser now? [Y/n]: ")
-        .strip()
-        .lower()
-    )
-    if open_report_now in ["", "y", "yes"]:
-        try:
-            cmd_open(["report"], state)
-        except Exception as e:
-            print(f"❌ Failed to open report: {e}")
-            debug_print(f"Full error: {e}")
+    if prompt_open:
+        open_report_now = input("Do you want to open the report in your browser now? [Y/n]: ").strip().lower()
+        if open_report_now in ["", "y", "yes"]:
+            try:
+                cmd_open(["report"], state)
+            except Exception as e:
+                print(f"❌ Failed to open report: {e}")
+                debug_print(f"Full error: {e}")
+
+    return filename
+
+
+def cmd_report(args, state):
+    """Generate one or multiple HTML reports."""
+
+    if args:
+        # Determine domain and row arguments
+        first_row_idx = next((i for i, a in enumerate(args) if a.isdigit()), None)
+        if first_row_idx is None:
+            print("Usage: report <domain> <row1> [row2 ...]")
+            return
+
+        domain = " ".join(args[:first_row_idx])
+        rows = args[first_row_idx:]
+        report_files = []
+
+        for row in rows:
+            cmd_load([domain, row], state)
+            report_file = _generate_report(state, prompt_open=False)
+            if report_file:
+                report_files.append(report_file)
+
+        if report_files:
+            open_now = input(
+                f"Open {len(report_files)} report{'s' if len(report_files)>1 else ''} in your browser now? [Y/n]: "
+            ).strip().lower()
+            if open_now in ["", "y", "yes"]:
+                for rf in report_files:
+                    try:
+                        _open_file_in_default_app(rf)
+                    except Exception as e:
+                        print(f"❌ Failed to open report {rf}: {e}")
+        return
+
+    _generate_report(state, prompt_open=True)
 
 
 def cmd_set(args, state):
