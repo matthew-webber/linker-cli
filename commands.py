@@ -637,7 +637,7 @@ def print_help_for_command(command, state):
             print()
             print("Process multiple pages from a CSV file and update with link counts.")
             print(
-                "The CSV should have columns: domain, row, existing_url, no_links, no_pdfs, no_embeds, % difficulty"
+                "The CSV should have columns: title, domain, row, existing_url, no_links, no_pdfs, no_embeds, % difficulty"
             )
             print()
             print("If no filename is provided, uses 'bulk_check_progress.csv'")
@@ -837,6 +837,7 @@ def _create_bulk_check_template(csv_path):
         writer = csv.writer(f)
         writer.writerow(
             [
+                "title",
                 "domain",
                 "row",
                 "existing_url",
@@ -889,7 +890,11 @@ def _load_bulk_check_csv(csv_path):
             try:
                 row_num = int(row["row"])
                 rows_to_process.append(
-                    {"domain": row["domain"].strip(), "row": row_num}
+                    {
+                        "title": row.get("title", "").strip(),
+                        "domain": row["domain"].strip(),
+                        "row": row_num,
+                    }
                 )
             except ValueError:
                 continue
