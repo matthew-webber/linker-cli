@@ -14,16 +14,29 @@ function copyToClipboard(e, text) {
     });
 }
 
-function copyAnchorToClipboard(e, copyValue, text) {
-  // Create the anchor HTML
-  const anchorHtml = `<a href="${copyValue}">${text}</a>`;
+function copyAnchorToClipboard(e, copyValue, text, linkKind) {
+  /*
+  linkKind: "contact" | "pdf"
+  */
+  let anchorHtml = '';
+  let bgColor = '';
+
+  if (linkKind === 'contact') {
+    anchorHtml = `<a href="${copyValue}">${text}</a>`;
+    bgColor = 'mediumseagreen';
+  } else if (linkKind === 'pdf') {
+    anchorHtml = `<a href="${copyValue}" target="_blank" title="${text}. PDF format, opens in new window.">${text}</a>`;
+    // set bg color to a deep, pale red
+    bgColor = '#830202ff';
+  }
+  
   navigator.clipboard
     .writeText(anchorHtml)
     .then(function () {
-      e.target.closest('.copy-anchor-btn').style.background = 'mediumseagreen';
+      e.target.closest('.copy-anchor-btn').style.filter = 'brightness(1.2)';
 
       setTimeout(() => {
-        e.target.closest('.copy-anchor-btn').style.background = '#e67e22';
+        e.target.closest('.copy-anchor-btn').style.filter = 'brightness(1)';
       }, 1000);
     })
     .catch(function (err) {

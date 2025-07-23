@@ -412,11 +412,14 @@ def _generate_consolidated_section(state):
 
             # Check if this is a tel: or mailto: link for special anchor copy button
             is_contact_link = href.startswith(("tel:", "mailto:"))
+            is_pdf_link = href.lower().endswith(".pdf")
             anchor_copy_button = ""
 
-            if is_contact_link:
+            link_kind = "contact" if is_contact_link else "pdf"
+
+            if is_contact_link or is_pdf_link:
                 anchor_copy_button = f"""
-                        <button class="copy-anchor-btn" onclick="copyAnchorToClipboard(event, '{copy_value}', '{text}')" title="Copy as HTML anchor">
+                        <button class="copy-anchor-btn" onclick="copyAnchorToClipboard(event, '{copy_value}', '{text}', '{link_kind}')" title="Copy as HTML anchor">
                             &lt;/&gt;
                         </button>"""
 
