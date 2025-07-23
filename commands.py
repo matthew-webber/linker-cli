@@ -793,50 +793,49 @@ def cmd_bulk_check(args, state):
                     state.set_variable("SELECTOR", "#main")
                     selector = "#main"
 
-                # Run the check
-                print(f"  🔍 Checking: {url}")
-                try:
+                # Check if we have cached data first
+                if state.current_page_data:
+                    print(f"  � Using cached data")
+                    data = state.current_page_data
+                else:
+                    # Run the check
+                    print(f"  🔍 Checking: {url}")
                     data = retrieve_page_data(url, selector, include_sidebar=False)
 
                     if "error" in data:
                         print(f"  ❌ Error extracting data: {data['error']}")
                         continue
 
-                    # Count items (excluding sidebar)
-                    links_count = len(data.get("links", []))
-                    pdfs_count = len(data.get("pdfs", []))
-                    embeds_count = len(data.get("embeds", []))
-
-                    # Calculate difficulty percentage
-                    difficulty_pct = _calculate_difficulty_percentage(
-                        data.get("links", [])
-                    )
-
-                    print(
-                        f"  📊 Found: {links_count} links, {pdfs_count} PDFs, {embeds_count} embeds, {difficulty_pct:.1%} difficulty"
-                    )
-
                     # Cache the data
                     state.current_page_data = data
                     _cache_page_data(state, url, data)
 
-                    # Update CSV with results
-                    _update_bulk_check_csv(
-                        csv_path,
-                        domain_name,
-                        row_num,
-                        url,
-                        links_count,
-                        pdfs_count,
-                        embeds_count,
-                        difficulty_pct,
-                    )
-                    processed_count += 1
+                # Count items (excluding sidebar)
+                links_count = len(data.get("links", []))
+                pdfs_count = len(data.get("pdfs", []))
+                embeds_count = len(data.get("embeds", []))
 
-                except Exception as e:
-                    print(f"  ❌ Error during page check: {e}")
-                    debug_print(f"Full error: {e}")
-                    continue
+                # Calculate difficulty percentage
+                difficulty_pct = _calculate_difficulty_percentage(
+                    data.get("links", [])
+                )
+
+                print(
+                    f"  📊 Found: {links_count} links, {pdfs_count} PDFs, {embeds_count} embeds, {difficulty_pct:.1%} difficulty"
+                )
+
+                # Update CSV with results
+                _update_bulk_check_csv(
+                    csv_path,
+                    domain_name,
+                    row_num,
+                    url,
+                    links_count,
+                    pdfs_count,
+                    embeds_count,
+                    difficulty_pct,
+                )
+                processed_count += 1
 
             except Exception as e:
                 print(f"❌ Error processing {domain_name} row {row_num}: {e}")
@@ -1051,6 +1050,23 @@ def cmd_check(args, state):
     print(f"🎯 Using selector: {selector}")
     if include_sidebar:
         print("🔲 Including sidebar content")
+
+    # Check if we have cached data that matches the current context
+    if state.current_page_data:
+        # Verify the cached data is for the current URL/context
+        cache_file = state.get_variable("CACHE_FILE")
+        if cache_file:
+            try:
+                metadata, _ = _load_cached_page_data(cache_file)
+                cached_url = metadata.get("url")
+                if cached_url and normalize_url(cached_url) == normalize_url(url):
+                    print("📋 Using cached data")
+                    data = state.current_page_data
+                    _generate_summary_report(include_sidebar, data)
+                    print("💡 Use 'show page' to see detailed results")
+                    return
+            except Exception as e:
+                debug_print(f"Error validating cache: {e}")
 
     spinner = Spinner(f"🔄 Please wait...")
     spinner.start()
