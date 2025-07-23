@@ -661,6 +661,61 @@ def print_help_for_command(command, state):
                 "% difficulty represents the percentage of non-easy links (tel: and mailto: are easy)"
             )
             return
+        case "debug":
+            print("Usage: debug [on|off]")
+            print("Toggle debug output; no argument toggles the current state.")
+            return
+        case "sidebar":
+            print("Usage: sidebar [on|off]")
+            print("Toggle inclusion of sidebar content when analyzing pages.")
+            return
+        case "lookup":
+            print("Usage: lookup <url>")
+            print("Example: lookup https://medicine.musc.edu/departments/surgery")
+            print("Look up where a link should point on the new site using the DSM file.")
+            return
+        case "load":
+            print("Usage: load <domain> <row_number>")
+            if state.excel_data:
+                print("Available domains:")
+                for i, domain in enumerate([d.get('full_name') for d in DOMAINS], 1):
+                    print(f"  {i:2}. {domain}")
+            return
+        case "open":
+            print("Usage: open <target>")
+            print("Available targets:")
+            print("  dsm        - Open the loaded DSM Excel file")
+            print("  [page|url] - Open the current URL in browser")
+            print("  report     - Open the latest report for current domain/row")
+            return
+        case "report":
+            print("Usage: report <domain> <row1> [row2 ...]")
+            print("Generate an HTML report for the specified rows or the current context if no arguments are provided.")
+            return
+        case "check":
+            print("Usage: check")
+            print("Analyze the current URL using the configured selector.")
+            return
+        case "migrate":
+            print("Usage: migrate")
+            print("Generate a migration hierarchy for the currently loaded URL.")
+            return
+        case "links":
+            print("Usage: links")
+            print("Analyze all links on the current page for migration mapping.")
+            return
+        case "show":
+            print("Usage: show [variables|domains|page]")
+            print("Display current variables, list available domains, or show page data.")
+            return
+        case "clear":
+            print("Usage: clear")
+            print("Clear the terminal screen.")
+            return
+        case "help":
+            print("Usage: help [command]")
+            print("Show general help or help for a specific command.")
+            return
 
 
 def display_domains():
@@ -677,18 +732,7 @@ def cmd_bulk_check(args, state):
     # Handle command arguments
     if args:
         if args[0] in ["-h", "--help", "help"]:
-            print("Usage: bulk_check [csv_filename]")
-            print()
-            print("Process multiple pages from a CSV file and update with link counts.")
-            print(
-                "The CSV should have columns: domain, row, existing_url, no_links, no_pdfs, no_embeds, % difficulty"
-            )
-            print()
-            print("If no filename is provided, uses 'bulk_check_progress.csv'")
-            print(
-                "Only processes rows where no_links, no_pdfs, no_embeds, and % difficulty are empty."
-            )
-            return
+            return print_help_for_command("bulk_check", state)
         else:
             csv_filename = args[0]
 
@@ -1052,8 +1096,7 @@ def cmd_debug(args, state):
         elif arg in ["off", "false", "0", "no"]:
             new_debug = False
         else:
-            print("Usage: debug [on|off]")
-            return
+            return print_help_for_command("debug", state)
 
     state.set_variable("DEBUG", "true" if new_debug else "false")
     sync_debug_with_state(state)  # Sync the cached value
@@ -1074,8 +1117,7 @@ def cmd_sidebar(args, state):
         elif arg in ["off", "false", "0", "no"]:
             new_value = False
         else:
-            print("Usage: sidebar [on|off]")
-            return
+            return print_help_for_command("sidebar", state)
 
     state.set_variable("INCLUDE_SIDEBAR", "true" if new_value else "false")
     print(f"🔲 Sidebar inclusion: {'ON' if new_value else 'OFF'}")
@@ -1095,6 +1137,7 @@ def cmd_help(args, state):
     print("  check                 Analyze the current URL")
     print("  bulk_check [csv]      Process multiple pages from CSV file")
     print("  migrate               Migrate the current URL")
+    print("  report [domain row]   Generate an HTML report for the page")
     print()
     print("Link Migration:")
     print("  lookup <url>          Look up where a link should point on the new site")
@@ -1123,9 +1166,7 @@ def cmd_links(args, state):
 def cmd_lookup(args, state):
     """Look up a link URL in the DSM spreadsheet to find its new location."""
     if not args:
-        print("Usage: lookup <url>")
-        print("Example: lookup https://medicine.musc.edu/departments/surgery")
-        return
+        return print_help_for_command("lookup", state)
 
     if not state.excel_data:
         from dsm_utils import get_latest_dsm_file, load_spreadsheet
@@ -1155,14 +1196,7 @@ def cmd_load(args, state):
     """Handle the 'load' command for loading URLs from spreadsheet."""
     # Help text
     if not args or len(args) < 2:
-        print("Usage: load <domain> <row_number>")
-        if state.excel_data:
-            print("Available domains:")
-            for i, domain in enumerate(
-                [domain.get("full_name") for domain in DOMAINS], 1
-            ):
-                print(f"  {i:2}. {domain}")
-        return
+        return print_help_for_command("load", state)
 
     # Load the DSM file if not already loaded
     if not state.excel_data:
@@ -1247,12 +1281,7 @@ def cmd_migrate(args, state):
 def cmd_open(args, state):
     """Open different resources in their default applications."""
     if not args:
-        print("Usage: open <target>")
-        print("Available targets:")
-        print("  dsm        - Open the loaded DSM Excel file")
-        print("  [page|url] - Open the current URL in browser")
-        print("  report     - Open the latest report for current domain/row")
-        return
+        return print_help_for_command("open", state)
 
     target = args[0].lower()
 
@@ -1427,8 +1456,7 @@ def cmd_report(args, state):
         # Determine domain and row arguments
         first_row_idx = next((i for i, a in enumerate(args) if a.isdigit()), None)
         if first_row_idx is None:
-            print("Usage: report <domain> <row1> [row2 ...]")
-            return
+            return print_help_for_command("report", state)
 
         domain = " ".join(args[:first_row_idx])
         rows = args[first_row_idx:]
