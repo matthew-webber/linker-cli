@@ -106,6 +106,68 @@ def _load_cached_page_data(cache_file_path):
         return {}, {}
 
 
+def _is_cache_valid_for_context(state, cache_file):
+    """Check if cached data is valid for the current context.
+
+    Returns a tuple of (is_valid, reason).
+    """
+    if not cache_file:
+        return False, "No cache file specified"
+
+    try:
+        metadata, _ = _load_cached_page_data(cache_file)
+        if not metadata:
+            return False, "Cache file contains no metadata"
+
+        current_url = state.get_variable("URL")
+        current_domain = state.get_variable("DOMAIN")
+        current_row = state.get_variable("ROW")
+        current_include_sidebar = state.get_variable("INCLUDE_SIDEBAR")
+
+        cached_url = metadata.get("url")
+        cached_domain = metadata.get("domain")
+        cached_row = metadata.get("row")
+        cached_include_sidebar = metadata.get("include_sidebar", False)
+
+        # Check URL match
+        if current_url and cached_url:
+            url_matches = normalize_url(cached_url) == normalize_url(current_url)
+            if not url_matches:
+                return (
+                    False,
+                    f"URL mismatch: cached={cached_url}, current={current_url}",
+                )
+
+        # Check domain/row match
+        if current_domain and cached_domain and cached_domain != current_domain:
+            return (
+                False,
+                f"Domain mismatch: cached={cached_domain}, current={current_domain}",
+            )
+
+        if current_row and cached_row and cached_row != current_row:
+            return False, f"Row mismatch: cached={cached_row}, current={current_row}"
+
+        # Check sidebar compatibility: cached data is valid if:
+        # 1. We don't need sidebar (current_include_sidebar=False), OR
+        # 2. We need sidebar AND cached data includes sidebar
+        sidebar_compatible = (not current_include_sidebar) or (
+            current_include_sidebar and cached_include_sidebar
+        )
+
+        if not sidebar_compatible:
+            return (
+                False,
+                f"Sidebar compatibility: need sidebar={current_include_sidebar}, cached sidebar={cached_include_sidebar}",
+            )
+
+        return True, "Cache is valid for current context"
+
+    except Exception as e:
+        debug_print(f"Error validating cache: {e}")
+        return False, f"Error validating cache: {e}"
+
+
 def _find_cache_file_for_domain_row(domain, row):
     """Find cache file matching a domain and row combination."""
     if not domain or not row:
@@ -675,13 +737,15 @@ def print_help_for_command(command, state):
         case "lookup":
             print("Usage: lookup <url>")
             print("Example: lookup https://medicine.musc.edu/departments/surgery")
-            print("Look up where a link should point on the new site using the DSM file.")
+            print(
+                "Look up where a link should point on the new site using the DSM file."
+            )
             return
         case "load":
             print("Usage: load <domain> <row_number>")
             if state.excel_data:
                 print("Available domains:")
-                for i, domain in enumerate([d.get('full_name') for d in DOMAINS], 1):
+                for i, domain in enumerate([d.get("full_name") for d in DOMAINS], 1):
                     print(f"  {i:2}. {domain}")
             return
         case "open":
@@ -692,8 +756,14 @@ def print_help_for_command(command, state):
             print("  report     - Open the latest report for current domain/row")
             return
         case "report":
-            print("Usage: report <domain> <row1> [row2 ...]")
-            print("Generate an HTML report for the specified rows or the current context if no arguments are provided.")
+            print("Usage: report [--force] [<domain> <row1> [row2 ...]]")
+            print(
+                "Generate an HTML report for the specified rows or the current context if no arguments are provided."
+            )
+            print("Options:")
+            print(
+                "  --force, -f    Force regeneration even if report already exists and is current"
+            )
             return
         case "check":
             print("Usage: check")
@@ -709,7 +779,9 @@ def print_help_for_command(command, state):
             return
         case "show":
             print("Usage: show [variables|domains|page]")
-            print("Display current variables, list available domains, or show page data.")
+            print(
+                "Display current variables, list available domains, or show page data."
+            )
             return
         case "clear":
             print("Usage: clear")
@@ -819,9 +891,7 @@ def cmd_bulk_check(args, state):
                 embeds_count = len(data.get("embeds", []))
 
                 # Calculate difficulty percentage
-                difficulty_pct = _calculate_difficulty_percentage(
-                    data.get("links", [])
-                )
+                difficulty_pct = _calculate_difficulty_percentage(data.get("links", []))
 
                 print(
                     f"  📊 Found: {links_count} links, {pdfs_count} PDFs, {embeds_count} embeds, {difficulty_pct:.1%} difficulty"
@@ -1058,30 +1128,16 @@ def cmd_check(args, state):
     if state.current_page_data:
         # Verify the cached data is for the current URL/context
         cache_file = state.get_variable("CACHE_FILE")
-        if cache_file:
-            try:
-                metadata, _ = _load_cached_page_data(cache_file)
-                cached_url = metadata.get("url")
-                cached_include_sidebar = metadata.get("include_sidebar", False)
-                
-                # Check if cached data matches current context
-                url_matches = cached_url and normalize_url(cached_url) == normalize_url(url)
-                
-                # Check sidebar compatibility: cached data is valid if:
-                # 1. We don't need sidebar (include_sidebar=False), OR
-                # 2. We need sidebar AND cached data includes sidebar
-                sidebar_compatible = (not include_sidebar) or (include_sidebar and cached_include_sidebar)
-                
-                if url_matches and sidebar_compatible:
-                    print("📋 Using cached data")
-                    data = state.current_page_data
-                    _generate_summary_report(include_sidebar, data)
-                    print("💡 Use 'show page' to see detailed results")
-                    return
-                elif url_matches and not sidebar_compatible:
-                    debug_print(f"Cache miss: need sidebar={include_sidebar}, cached sidebar={cached_include_sidebar}")
-            except Exception as e:
-                debug_print(f"Error validating cache: {e}")
+        is_valid, reason = _is_cache_valid_for_context(state, cache_file)
+
+        if is_valid:
+            print("📋 Using cached data")
+            data = state.current_page_data
+            _generate_summary_report(include_sidebar, data)
+            print("💡 Use 'show page' to see detailed results")
+            return
+        else:
+            debug_print(f"Cache validation failed: {reason}")
 
     spinner = Spinner(f"🔄 Please wait...")
     spinner.start()
@@ -1168,7 +1224,9 @@ def cmd_help(args, state):
     print("  check                 Analyze the current URL")
     print("  bulk_check [csv]      Process multiple pages from CSV file")
     print("  migrate               Migrate the current URL")
-    print("  report [domain row]   Generate an HTML report for the page")
+    print(
+        "  report [--force] [<domain> <row1> [<row2> ... <rowN>]]      Generate an HTML report for the page"
+    )
     print()
     print("Link Migration:")
     print("  lookup <url>          Look up where a link should point on the new site")
@@ -1377,8 +1435,14 @@ def cmd_open(args, state):
         print("Available targets: dsm, page, url, report")
 
 
-def _generate_report(state, prompt_open=True):
-    """Generate a report for the currently loaded domain/row."""
+def _generate_report(state, prompt_open=True, force_regenerate=False):
+    """Generate a report for the currently loaded domain/row.
+
+    Args:
+        state: The CLI state object
+        prompt_open: Whether to prompt the user to open the report when done
+        force_regenerate: If True, regenerate even if report already exists and is current
+    """
 
     # Check if we need to run 'check' to gather page data
     need_to_check = False
@@ -1387,45 +1451,12 @@ def _generate_report(state, prompt_open=True):
         need_to_check = True
         reason = "No page data available"
     else:
-        current_url = state.get_variable("URL")
-        current_domain = state.get_variable("DOMAIN")
-        current_row = state.get_variable("ROW")
-        current_include_sidebar = state.get_variable("INCLUDE_SIDEBAR")
         cache_file = state.get_variable("CACHE_FILE")
+        is_valid, validation_reason = _is_cache_valid_for_context(state, cache_file)
 
-        if cache_file:
-            try:
-                metadata, _ = _load_cached_page_data(cache_file)
-                cached_url = metadata.get("url")
-                cached_domain = metadata.get("domain")
-                cached_row = metadata.get("row")
-                cached_include_sidebar = metadata.get("include_sidebar", False)
-
-                # Check sidebar compatibility: cached data is valid if:
-                # 1. We don't need sidebar (current_include_sidebar=False), OR
-                # 2. We need sidebar AND cached data includes sidebar
-                sidebar_compatible = (not current_include_sidebar) or (current_include_sidebar and cached_include_sidebar)
-
-                if (
-                    (current_url and cached_url != normalize_url(current_url))
-                    or (current_domain and cached_domain != current_domain)
-                    or (current_row and cached_row != current_row)
-                    or not sidebar_compatible
-                ):
-                    need_to_check = True
-                    if not sidebar_compatible:
-                        reason = f"Cache sidebar mismatch: need sidebar={current_include_sidebar}, cached sidebar={cached_include_sidebar}"
-                    else:
-                        reason = "Cached data doesn't match current context"
-
-            except Exception as e:
-                debug_print(f"Error validating cache file: {e}")
-                need_to_check = True
-                reason = "Error validating cached data"
-        else:
-            if current_url:
-                need_to_check = True
-                reason = "No cache file for current context"
+        if not is_valid:
+            need_to_check = True
+            reason = validation_reason
 
     if need_to_check:
         print(f"🔄 Running 'check' to gather page data... ({reason})")
@@ -1445,7 +1476,53 @@ def _generate_report(state, prompt_open=True):
     clean_domain = re.sub(r"[^a-zA-Z0-9]", "_", domain.lower())
     filename = f"./reports/{clean_domain}_{row}.html"
 
-    print(f"📊 Generating report: {filename}")
+    # Check if report already exists and is up-to-date (unless forced to regenerate)
+    report_path = Path(filename)
+    if report_path.exists() and not force_regenerate:
+        cache_file = state.get_variable("CACHE_FILE")
+        if cache_file:
+            try:
+                # Get the modification time of the report file
+                report_mtime = report_path.stat().st_mtime
+
+                # Get the cache file modification time
+                cache_path = Path(cache_file)
+                if cache_path.exists():
+                    cache_mtime = cache_path.stat().st_mtime
+
+                    # If report is newer than cache, it's up-to-date
+                    if report_mtime >= cache_mtime:
+                        print(f"📋 Report already exists and is up-to-date: {filename}")
+                        if prompt_open:
+                            open_report_now = (
+                                input(
+                                    "Do you want to open the existing report in your browser now? [Y/n]: "
+                                )
+                                .strip()
+                                .lower()
+                            )
+                            if open_report_now in ["", "y", "yes"]:
+                                try:
+                                    _open_file_in_default_app(report_path)
+                                except Exception as e:
+                                    print(f"❌ Failed to open report: {e}")
+                                    debug_print(f"Full error: {e}")
+                        return str(filename)
+                    else:
+                        print(
+                            f"📊 Regenerating report (cache is newer than existing report): {filename}"
+                        )
+                else:
+                    print(f"📊 Regenerating report (cache file not found): {filename}")
+            except Exception as e:
+                debug_print(f"Error checking report currency: {e}")
+                print(f"📊 Regenerating report (error checking timestamps): {filename}")
+        else:
+            print(f"📊 Regenerating report (no cache file available): {filename}")
+    elif force_regenerate:
+        print(f"📊 Force regenerating report: {filename}")
+    else:
+        print(f"📊 Generating report: {filename}")
 
     print("  ▶ Capturing page data...")
     if state.current_page_data:
@@ -1480,7 +1557,11 @@ def _generate_report(state, prompt_open=True):
     _sync_report_static_assets(reports_dir)
 
     if prompt_open:
-        open_report_now = input("Do you want to open the report in your browser now? [Y/n]: ").strip().lower()
+        open_report_now = (
+            input("Do you want to open the report in your browser now? [Y/n]: ")
+            .strip()
+            .lower()
+        )
         if open_report_now in ["", "y", "yes"]:
             try:
                 cmd_open(["report"], state)
@@ -1494,6 +1575,12 @@ def _generate_report(state, prompt_open=True):
 def cmd_report(args, state):
     """Generate one or multiple HTML reports."""
 
+    # Check for force flag
+    force_regenerate = False
+    if args and args[0] in ["--force", "-f"]:
+        force_regenerate = True
+        args = args[1:]  # Remove the flag from args
+
     if args:
         # Determine domain and row arguments
         first_row_idx = next((i for i, a in enumerate(args) if a.isdigit()), None)
@@ -1506,14 +1593,20 @@ def cmd_report(args, state):
 
         for row in rows:
             cmd_load([domain, row], state)
-            report_file = _generate_report(state, prompt_open=False)
+            report_file = _generate_report(
+                state, prompt_open=False, force_regenerate=force_regenerate
+            )
             if report_file:
                 report_files.append(report_file)
 
         if report_files:
-            open_now = input(
-                f"Open {len(report_files)} report{'s' if len(report_files)>1 else ''} in your browser now? [Y/n]: "
-            ).strip().lower()
+            open_now = (
+                input(
+                    f"Open {len(report_files)} report{'s' if len(report_files)>1 else ''} in your browser now? [Y/n]: "
+                )
+                .strip()
+                .lower()
+            )
             if open_now in ["", "y", "yes"]:
                 for rf in report_files:
                     try:
@@ -1522,7 +1615,7 @@ def cmd_report(args, state):
                         print(f"❌ Failed to open report {rf}: {e}")
         return
 
-    _generate_report(state, prompt_open=True)
+    _generate_report(state, prompt_open=True, force_regenerate=force_regenerate)
 
 
 def cmd_set(args, state):
