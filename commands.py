@@ -60,6 +60,8 @@ def _cache_page_data(state, url, data):
             "url": url,
             "domain": domain,
             "row": row,
+            "selector": selector,
+            "include_sidebar": include_sidebar,
             "timestamp": datetime.now().isoformat(),
             "cache_filename": cache_filename,
         },
@@ -188,6 +190,7 @@ def _update_cache_file_state(state, url=None, domain=None, row=None):
             if page_data:
                 state.current_page_data = page_data
                 print(f"📋 Loaded cached data from {Path(found_cache_file).name}")
+                # Note: Sidebar compatibility validation happens in cmd_check and _generate_report
             else:
                 debug_print(
                     f"Cache file {found_cache_file} exists but contains no page data"
@@ -1059,12 +1062,24 @@ def cmd_check(args, state):
             try:
                 metadata, _ = _load_cached_page_data(cache_file)
                 cached_url = metadata.get("url")
-                if cached_url and normalize_url(cached_url) == normalize_url(url):
+                cached_include_sidebar = metadata.get("include_sidebar", False)
+                
+                # Check if cached data matches current context
+                url_matches = cached_url and normalize_url(cached_url) == normalize_url(url)
+                
+                # Check sidebar compatibility: cached data is valid if:
+                # 1. We don't need sidebar (include_sidebar=False), OR
+                # 2. We need sidebar AND cached data includes sidebar
+                sidebar_compatible = (not include_sidebar) or (include_sidebar and cached_include_sidebar)
+                
+                if url_matches and sidebar_compatible:
                     print("📋 Using cached data")
                     data = state.current_page_data
                     _generate_summary_report(include_sidebar, data)
                     print("💡 Use 'show page' to see detailed results")
                     return
+                elif url_matches and not sidebar_compatible:
+                    debug_print(f"Cache miss: need sidebar={include_sidebar}, cached sidebar={cached_include_sidebar}")
             except Exception as e:
                 debug_print(f"Error validating cache: {e}")
 
@@ -1375,6 +1390,7 @@ def _generate_report(state, prompt_open=True):
         current_url = state.get_variable("URL")
         current_domain = state.get_variable("DOMAIN")
         current_row = state.get_variable("ROW")
+        current_include_sidebar = state.get_variable("INCLUDE_SIDEBAR")
         cache_file = state.get_variable("CACHE_FILE")
 
         if cache_file:
@@ -1383,14 +1399,24 @@ def _generate_report(state, prompt_open=True):
                 cached_url = metadata.get("url")
                 cached_domain = metadata.get("domain")
                 cached_row = metadata.get("row")
+                cached_include_sidebar = metadata.get("include_sidebar", False)
+
+                # Check sidebar compatibility: cached data is valid if:
+                # 1. We don't need sidebar (current_include_sidebar=False), OR
+                # 2. We need sidebar AND cached data includes sidebar
+                sidebar_compatible = (not current_include_sidebar) or (current_include_sidebar and cached_include_sidebar)
 
                 if (
                     (current_url and cached_url != normalize_url(current_url))
                     or (current_domain and cached_domain != current_domain)
                     or (current_row and cached_row != current_row)
+                    or not sidebar_compatible
                 ):
                     need_to_check = True
-                    reason = "Cached data doesn't match current context"
+                    if not sidebar_compatible:
+                        reason = f"Cache sidebar mismatch: need sidebar={current_include_sidebar}, cached sidebar={cached_include_sidebar}"
+                    else:
+                        reason = "Cached data doesn't match current context"
 
             except Exception as e:
                 debug_print(f"Error validating cache file: {e}")
