@@ -41,6 +41,7 @@ def _cache_page_data(state, url, data):
     # Use domain-row# format if available, fallback to URL
     domain = state.get_variable("DOMAIN")
     row = state.get_variable("ROW")
+    kanban_id = state.get_variable("KANBAN_ID")
     selector = state.get_variable("SELECTOR")
     include_sidebar = state.get_variable("INCLUDE_SIDEBAR")
     url = normalize_url(url)
@@ -60,6 +61,7 @@ def _cache_page_data(state, url, data):
             "url": url,
             "domain": domain,
             "row": row,
+            "kanban_id": kanban_id,
             "selector": selector,
             "include_sidebar": include_sidebar,
             "timestamp": datetime.now().isoformat(),
@@ -251,6 +253,24 @@ def _update_cache_file_state(state, url=None, domain=None, row=None):
             metadata, page_data = _load_cached_page_data(found_cache_file)
             if page_data:
                 state.current_page_data = page_data
+
+                # Restore metadata variables from cache
+                if metadata:
+                    if metadata.get("kanban_id"):
+                        state.set_variable("KANBAN_ID", metadata["kanban_id"])
+                    if metadata.get("url"):
+                        state.set_variable("URL", metadata["url"])
+                    if metadata.get("domain"):
+                        state.set_variable("DOMAIN", metadata["domain"])
+                    if metadata.get("row"):
+                        state.set_variable("ROW", metadata["row"])
+                    if metadata.get("selector"):
+                        state.set_variable("SELECTOR", metadata["selector"])
+                    if metadata.get("include_sidebar") is not None:
+                        state.set_variable(
+                            "INCLUDE_SIDEBAR", str(metadata["include_sidebar"]).lower()
+                        )
+
                 print(f"📋 Loaded cached data from {Path(found_cache_file).name}")
                 # Note: Sidebar compatibility validation happens in cmd_check and _generate_report
             else:
@@ -346,7 +366,7 @@ def _generate_consolidated_section(state):
     <div class="consolidated-section">
         <div class="source-info">
             <h3>📍 Source Information</h3>
-            <p><strong>URL:</strong> <a href="{url}" target="_blank">{url}</a></p>
+            <p><strong>URL:</strong> <a href="{url}" onclick="window.open(this.href, '_blank', 'noopener,noreferrer,width=1200,height=1200'); return false;">{url}</a></p>
             <p><strong>DSM Location:</strong> {domain} {row}</p>
         </div>
         
@@ -571,7 +591,13 @@ def _get_var_description(var):
 
 
 def _generate_html_report(
-    domain, row, show_page_output, migrate_output, links_output, consolidated_output
+    domain,
+    row,
+    show_page_output,
+    migrate_output,
+    links_output,
+    consolidated_output,
+    kanban_id=None,
 ):
     """Generate HTML report from template and captured outputs."""
 
@@ -588,9 +614,20 @@ def _generate_html_report(
 
     timestamp = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
 
+    # Generate Kanban card URL if kanban_id is provided
+    kanban_html = ""
+    if kanban_id and kanban_id.strip():
+        kanban_url = f"https://planner.cloud.microsoft/webui/v1/plan/aF9AETwLXEioMF3ADqLdpWQADWIy/view/board/task/{kanban_id.strip()}"
+        kanban_html = f'<div class="kanban-link"><a href="{kanban_url}" onclick="window.open(this.href, \'_blank\', \'noopener,noreferrer,width=800,height=1200\'); return false;" class="kanban-button">📋 Kanban card</a></div>'
+        debug_print(f"Generated Kanban link: {kanban_html}")
+
+    else:
+        debug_print("No Kanban ID provided.")
+
     return template.format(
         domain=domain,
         row=row,
+        kanban_url=kanban_html,
         consolidated_output=consolidated_output,
         show_page_output=show_page_output.replace("<", "&lt;").replace(">", "&gt;"),
         migrate_output=migrate_output.replace("<", "&lt;").replace(">", "&gt;"),
@@ -848,6 +885,7 @@ def cmd_bulk_check(args, state):
         for i, row_data in enumerate(rows_to_process, 1):
             domain_name = row_data["domain"]
             row_num = row_data["row"]
+            kanban_id = row_data.get("kanban_id", "")
 
             print(
                 f"\n🔄 Processing {i}/{len(rows_to_process)}: {domain_name} row {row_num}"
@@ -859,6 +897,9 @@ def cmd_bulk_check(args, state):
                 if not success:
                     print(f"❌ Failed to load URL for {domain_name} row {row_num}")
                     continue
+
+                # Set kanban_id in state for caching
+                state.set_variable("KANBAN_ID", kanban_id)
 
                 url = state.get_variable("URL")
                 selector = state.get_variable("SELECTOR")
@@ -958,6 +999,7 @@ def _create_bulk_check_template(csv_path):
         writer = csv.writer(f)
         writer.writerow(
             [
+                "kanban_id",
                 "title",
                 "domain",
                 "row",
@@ -971,6 +1013,8 @@ def _create_bulk_check_template(csv_path):
         # Add a few example rows with comments
         writer.writerow(
             [
+                "# Kanban card ID",
+                "# Page title here",
                 "# Fill in domain and row, leave other columns empty",
                 "",
                 "",
@@ -980,7 +1024,19 @@ def _create_bulk_check_template(csv_path):
                 "",
             ]
         )
-        writer.writerow(["# Example: medicine.musc.edu", "42", "", "", "", "", ""])
+        writer.writerow(
+            [
+                "# Example: abc123def456",
+                "# Example: Department of Surgery",
+                "# Example: medicine.musc.edu",
+                "42",
+                "",
+                "",
+                "",
+                "",
+                "",
+            ]
+        )
 
 
 def _load_bulk_check_csv(csv_path):
@@ -1012,6 +1068,7 @@ def _load_bulk_check_csv(csv_path):
                 row_num = int(row["row"])
                 rows_to_process.append(
                     {
+                        "kanban_id": row.get("kanban_id", "").strip(),
                         "title": row.get("title", "").strip(),
                         "domain": row["domain"].strip(),
                         "row": row_num,
@@ -1542,8 +1599,15 @@ def _generate_report(state, prompt_open=True, force_regenerate=False):
     consolidated_output = _generate_consolidated_section(state)
 
     print("  ▶ Generating HTML...")
+    kanban_id = state.get_variable("KANBAN_ID")
     html_content = _generate_html_report(
-        domain, row, show_page_output, migrate_output, links_output, consolidated_output
+        domain,
+        row,
+        show_page_output,
+        migrate_output,
+        links_output,
+        consolidated_output,
+        kanban_id,
     )
 
     try:

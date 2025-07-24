@@ -1,59 +1,56 @@
 <!DOCTYPE html>
 <html lang="en">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>Migration Report - {domain} Row {row}</title>
-    <link rel="stylesheet" href="styles.css">
-</head>
-<body>
+    <link rel="stylesheet" href="styles.css" />
+  </head>
+  <body>
     <div class="container">
-        <div class="header">
-            <h1>Migration Report</h1>
-            <p>{domain} - Row {row}</p>
+      <div class="header">
+        <h1>Migration Report</h1>
+        <p>{domain} - Row {row}</p>
+        {kanban_url}
+      </div>
+
+      <div class="section">
+        <div class="section-header">
+          <h2>📋 Summary</h2>
         </div>
-        
-        <div class="section">
-            <div class="section-header">
-                <h2>📋 Summary</h2>
-            </div>
-            <div class="section-content">
-                {consolidated_output}
-            </div>
+        <div class="section-content">{consolidated_output}</div>
+      </div>
+
+      <div class="section">
+        <div class="section-header">
+          <h2>🔄 Page Mapping</h2>
         </div>
-        
-        <div class="section">
-            <div class="section-header">
-                <h2>🔄 Page Mapping</h2>
-            </div>
-            <div class="section-content">
-                <div class="output">{migrate_output}</div>
-            </div>
+        <div class="section-content">
+          <div class="output">{migrate_output}</div>
         </div>
-        
-        <div class="section">
-            <div class="section-header">
-                <h2>📄 Page Data</h2>
-            </div>
-            <div class="section-content">
-                <div class="output">{show_page_output}</div>
-            </div>
+      </div>
+
+      <div class="section">
+        <div class="section-header">
+          <h2>📄 Page Data</h2>
         </div>
-        
-        <div class="section">
-            <div class="section-header">
-                <h2>🔗 Links Analysis</h2>
-            </div>
-            <div class="section-content">
-                <div class="output">{links_output}</div>
-            </div>
+        <div class="section-content">
+          <div class="output">{show_page_output}</div>
         </div>
-        
-        <div class="timestamp">
-            Generated on {timestamp}
+      </div>
+
+      <div class="section">
+        <div class="section-header">
+          <h2>🔗 Links Analysis</h2>
         </div>
+        <div class="section-content">
+          <div class="output">{links_output}</div>
+        </div>
+      </div>
+
+      <div class="timestamp">Generated on {timestamp}</div>
     </div>
-    
+
     <script src="script.js"></script>
-</body>
+  </body>
 </html>

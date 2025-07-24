@@ -4,6 +4,7 @@ Migration logic for Linker CLI.
 
 from migrate_hierarchy import print_hierarchy, print_proposed_hierarchy
 from link_mapping import launch_link_mapping
+from utils import debug_print
 
 
 def migrate(state, url=None):
@@ -30,8 +31,7 @@ def migrate(state, url=None):
                     state.set_variable("PROPOSED_PATH", proposed)
                     print_proposed_hierarchy(url, proposed)
                 else:
-                    if debug_print:
-                        debug_print("No proposed URL provided.")
+                    debug_print("No proposed URL provided.")
         elif choice == "l":
             if not state.current_page_data:
                 print("❌ No page data loaded. Run 'check' first.")

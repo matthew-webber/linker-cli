@@ -14,6 +14,7 @@ class CLIState:
             "URL": "",
             "DOMAIN": "",
             "ROW": "",
+            "KANBAN_ID": "",
             "SELECTOR": "#main",
             "INCLUDE_SIDEBAR": "false",
             "DSM_FILE": "",
@@ -39,24 +40,22 @@ class CLIState:
         if name in self.variables:
             old_value = self.variables[name]
             self.variables[name] = str(value) if value is not None else ""
-            if debug_print:
-                debug_print(
-                    f"Variable {name} changed from '{old_value}' to '{self.variables[name]}'"
-                )
+            debug_print(
+                f"❤️Variable {name} changed from '{old_value}' to '{self.variables[name]}'"
+            )
             return True
         else:
-            if debug_print:
-                debug_print(f"Unknown variable: {name}")
+            debug_print(f"💙Unknown variable: {name}")
             return False
 
     def get_variable(self, name):
         name = name.upper()
         value = self.variables.get(name, "")
-        
+
         # Convert boolean variables to actual booleans
         if name in self.boolean_variables:
             return value.lower() in ["true", "1", "yes", "on"]
-        
+
         return value
 
     def get_raw_variable(self, name):
@@ -93,5 +92,5 @@ class CLIState:
             print(f"❌ Invalid variables: {', '.join(invalid)}")
         else:
             debug_print("All required variables are set.")
-        
+
         return missing, invalid
