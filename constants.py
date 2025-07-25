@@ -99,7 +99,7 @@ DOMAIN_MAPPING = {
 
 def get_commands(state):
     """Dynamically load and return the COMMANDS dictionary."""
-    from commands import (
+    from commands.core import (
         cmd_bulk_check,
         cmd_check,
         cmd_clear,
