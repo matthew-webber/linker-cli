@@ -1,6 +1,6 @@
 import os
 from pathlib import Path
-from unittest.mock import MagicMock, patch
+from unittest.mock import MagicMock
 import pytest
 
 # ensure commands module is importable from repo root
@@ -16,6 +16,12 @@ def mock_state():
     state.get_variable = MagicMock(return_value=None)
     state.set_variable = MagicMock()
     return state
+
+
+@pytest.fixture
+def cli_state():
+    from state import CLIState
+    return CLIState()
 
 
 # ----- cmd_sidebar tests -----
@@ -76,3 +82,157 @@ def test_cmd_clear(monkeypatch):
     monkeypatch.setattr(os, "name", "posix", raising=False)
     commands.cmd_clear([])
     call.assert_called_once_with("clear")
+
+
+# ----- cmd_bulk_check tests -----
+
+def test_cmd_bulk_check_creates_template(tmp_path, monkeypatch, cli_state, capsys):
+    csv = tmp_path / "bulk.csv"
+    create = MagicMock()
+    monkeypatch.setattr(commands, "_create_bulk_check_template", create)
+    commands.cmd_bulk_check([str(csv)], cli_state)
+    create.assert_called_once_with(csv)
+    out = capsys.readouterr().out
+    assert "Creating template CSV" in out
+
+
+def test_cmd_bulk_check_all_done(tmp_path, monkeypatch, cli_state, capsys):
+    csv = tmp_path / "bulk.csv"
+    csv.touch()
+    loader = MagicMock(return_value=[])
+    monkeypatch.setattr(commands, "_load_bulk_check_csv", loader)
+    commands.cmd_bulk_check([str(csv)], cli_state)
+    loader.assert_called_once_with(csv)
+    assert "already been processed" in capsys.readouterr().out
+
+
+# ----- cmd_check tests -----
+
+def test_cmd_check_uses_cached_data(monkeypatch, cli_state, capsys):
+    cli_state.set_variable("URL", "http://example.com")
+    cli_state.set_variable("SELECTOR", "#main")
+    cli_state.set_variable("INCLUDE_SIDEBAR", "false")
+    cli_state.current_page_data = {"links": [], "pdfs": [], "embeds": []}
+    cli_state.set_variable("CACHE_FILE", "cache.json")
+    monkeypatch.setattr(commands, "_is_cache_valid_for_context", lambda s, c: (True, ""))
+    gen = MagicMock()
+    monkeypatch.setattr(commands, "_generate_summary_report", gen)
+    cache = MagicMock()
+    monkeypatch.setattr(commands, "_cache_page_data", cache)
+    commands.cmd_check([], cli_state)
+    gen.assert_called_once_with(False, cli_state.current_page_data)
+    cache.assert_not_called()
+    assert "Using cached data" in capsys.readouterr().out
+
+
+# ----- cmd_debug tests -----
+
+def test_cmd_debug_toggle_on(monkeypatch, mock_state, capsys):
+    mock_state.get_variable.return_value = False
+    monkeypatch.setattr(commands, "sync_debug_with_state", MagicMock())
+    commands.cmd_debug([], mock_state)
+    mock_state.set_variable.assert_called_once_with("DEBUG", "true")
+    assert "Debug mode: ON" in capsys.readouterr().out
+
+
+def test_cmd_debug_set_off(monkeypatch, mock_state, capsys):
+    mock_state.get_variable.return_value = True
+    monkeypatch.setattr(commands, "sync_debug_with_state", MagicMock())
+    commands.cmd_debug(["off"], mock_state)
+    mock_state.set_variable.assert_called_once_with("DEBUG", "false")
+    assert "Debug mode: OFF" in capsys.readouterr().out
+
+
+# ----- cmd_help test -----
+
+def test_cmd_help_output(cli_state, capsys):
+    commands.cmd_help([], cli_state)
+    assert "COMMAND REFERENCE" in capsys.readouterr().out
+
+
+# ----- cmd_links test -----
+
+def test_cmd_links(monkeypatch, cli_state):
+    func = MagicMock()
+    import lookup_utils
+    monkeypatch.setattr(lookup_utils, "analyze_page_links_for_migration", func)
+    commands.cmd_links([], cli_state)
+    func.assert_called_once_with(cli_state)
+
+
+# ----- cmd_lookup test -----
+
+def test_cmd_lookup_success(monkeypatch, cli_state, capsys):
+    cli_state.excel_data = "sheet"
+    lookup = MagicMock(return_value={})
+    display = MagicMock()
+    import lookup_utils
+    monkeypatch.setattr(lookup_utils, "lookup_link_in_dsm", lookup)
+    monkeypatch.setattr(lookup_utils, "display_link_lookup_result", display)
+    commands.cmd_lookup(["http://example.com"], cli_state)
+    lookup.assert_called_once_with("http://example.com", "sheet", cli_state)
+    display.assert_called_once_with(lookup.return_value)
+
+
+# ----- cmd_load test -----
+
+def test_cmd_load_success(monkeypatch, cli_state, capsys):
+    cli_state.excel_data = MagicMock()
+    cli_state.excel_data.parse.return_value = "df"
+    monkeypatch.setattr(commands, "get_existing_url", lambda df, row: "http://page")
+    monkeypatch.setattr(commands, "get_proposed_url", lambda df, row: "/new")
+    monkeypatch.setattr(commands, "_update_cache_file_state", MagicMock())
+    monkeypatch.setattr(commands, "count_http", lambda url: 0)
+    commands.cmd_load(["Enterprise", "5"], cli_state)
+    assert cli_state.get_variable("URL") == "http://page"
+    assert "Loaded URL" in capsys.readouterr().out
+
+
+# ----- cmd_migrate test -----
+
+def test_cmd_migrate_calls_migrate(monkeypatch, cli_state):
+    cli_state.set_variable("URL", "http://example.com")
+    func = MagicMock()
+    monkeypatch.setattr(commands, "migrate", func)
+    commands.cmd_migrate([], cli_state)
+    func.assert_called_once_with(cli_state, url="http://example.com")
+
+
+# ----- cmd_report test -----
+
+def test_cmd_report_multiple_rows(monkeypatch, cli_state):
+    load = MagicMock()
+    gen = MagicMock(return_value="file.html")
+    opener = MagicMock()
+    monkeypatch.setattr(commands, "cmd_load", load)
+    monkeypatch.setattr(commands, "_generate_report", gen)
+    monkeypatch.setattr(commands, "_open_file_in_default_app", opener)
+    monkeypatch.setattr("builtins.input", lambda _: "n")
+    commands.cmd_report(["Enterprise", "1", "2"], cli_state)
+    assert load.call_count == 2
+    assert gen.call_count == 2
+    opener.assert_not_called()
+
+
+# ----- cmd_set test -----
+
+def test_cmd_set_url(monkeypatch, mock_state, capsys):
+    mock_state.set_variable.return_value = True
+    updater = MagicMock()
+    monkeypatch.setattr(commands, "_update_cache_file_state", updater)
+    commands.cmd_set(["URL", "http://example.com"], mock_state)
+    mock_state.set_variable.assert_called_once_with("URL", "http://example.com")
+    updater.assert_called_once_with(mock_state, url="http://example.com")
+    assert "URL => http://example.com" in capsys.readouterr().out
+
+
+# ----- cmd_show tests -----
+
+def test_cmd_show_variables(mock_state):
+    commands.cmd_show([], mock_state)
+    mock_state.list_variables.assert_called_once()
+
+
+def test_cmd_show_page_no_data(cli_state, capsys):
+    commands.cmd_show(["page"], cli_state)
+    assert "No page data loaded" in capsys.readouterr().out
