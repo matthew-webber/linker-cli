@@ -73,25 +73,37 @@ def retrieve_page_data(url, selector="#main", include_sidebar=False):
 
     try:
         url = normalize_url(url)
+        debug_print(f"Normalized URL: {url}")
         response = requests.get(url, timeout=30)
+        debug_print(
+            f"HTTP GET request completed with status code: {response.status_code}"
+        )
         response.raise_for_status()
         soup = BeautifulSoup(response.text, "html.parser")
+        debug_print("HTML content successfully parsed with BeautifulSoup")
 
         # Extract main content
+        debug_print(f"Extracting main content using selector: {selector}")
         main_links, main_pdfs = extract_links_from_page(url, selector)
+        debug_print(
+            f"Extracted {len(main_links)} links and {len(main_pdfs)} PDFs from main content"
+        )
         main_embeds = extract_embeds_from_page(soup, selector)
+        debug_print(f"Extracted {len(main_embeds)} embeds from main content")
 
         # Extract sidebar content if requested
         sidebar_links, sidebar_pdfs, sidebar_embeds = [], [], []
         if include_sidebar:
+            debug_print("Sidebar content extraction enabled")
             try:
                 sidebar_links, sidebar_pdfs = extract_links_from_page(
                     url, "#sidebar-components"
                 )
-                sidebar_embeds = extract_embeds_from_page(soup, "#sidebar-components")
                 debug_print(
-                    f"Sidebar extraction: {len(sidebar_links)} links, {len(sidebar_pdfs)} PDFs, {len(sidebar_embeds)} embeds"
+                    f"Extracted {len(sidebar_links)} links and {len(sidebar_pdfs)} PDFs from sidebar"
                 )
+                sidebar_embeds = extract_embeds_from_page(soup, "#sidebar-components")
+                debug_print(f"Extracted {len(sidebar_embeds)} embeds from sidebar")
             except Exception as e:
                 debug_print(f"Warning: Error extracting sidebar content: {e}")
 
