@@ -1048,27 +1048,29 @@ def _load_bulk_check_csv(csv_path):
 
         for row in reader:
             # Skip comment rows and empty rows
+            debug_print(f"Processing row: {row}")
+            debug_print(f"Row domain: {row['domain']}")
             if row["domain"].startswith("#") or not row["domain"].strip():
                 continue
 
             # Skip rows that already have data (all count fields are filled)
             if (
-                row.get("no_links", "").strip()
-                and row.get("no_pdfs", "").strip()
-                and row.get("no_embeds", "").strip()
-                and row.get("% difficulty", "").strip()
+                row.get("no_links", "")
+                and row.get("no_pdfs", "")
+                and row.get("no_embeds", "")
+                and row.get("% difficulty", "")
             ):
                 continue
 
             # Validate required fields
-            if not row.get("domain", "").strip() or not row.get("row", "").strip():
+            if not row.get("domain", "") or not row.get("row", ""):
                 continue
 
             try:
                 row_num = int(row["row"])
                 rows_to_process.append(
                     {
-                        "kanban_id": row.get("kanban_id", "").strip(),
+                        "kanban_id": row.get("kanban_id", "").lstrip("'"),
                         "title": row.get("title", "").strip(),
                         "domain": row["domain"].strip(),
                         "row": row_num,
