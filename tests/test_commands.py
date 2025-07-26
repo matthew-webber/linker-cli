@@ -8,6 +8,8 @@ import sys
 sys.path.append(str(Path(__file__).resolve().parent.parent))
 
 from commands import core as commands
+from commands import clear
+from commands import help as help_cmd
 
 
 @pytest.fixture
@@ -80,7 +82,7 @@ def test_cmd_clear(monkeypatch):
     call = MagicMock()
     monkeypatch.setattr(os, "system", call)
     monkeypatch.setattr(os, "name", "posix", raising=False)
-    commands.cmd_clear([])
+    clear.cmd_clear([])
     call.assert_called_once_with("clear")
 
 
@@ -146,7 +148,7 @@ def test_cmd_debug_set_off(monkeypatch, mock_state, capsys):
 # ----- cmd_help test -----
 
 def test_cmd_help_output(cli_state, capsys):
-    commands.cmd_help([], cli_state)
+    help_cmd.cmd_help([], cli_state)
     assert "COMMAND REFERENCE" in capsys.readouterr().out
 
 

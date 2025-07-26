@@ -102,9 +102,7 @@ def get_commands(state):
     from commands.core import (
         cmd_bulk_check,
         cmd_check,
-        cmd_clear,
         cmd_debug,
-        cmd_help,
         cmd_links,
         cmd_load,
         cmd_lookup,
@@ -115,6 +113,8 @@ def get_commands(state):
         cmd_sidebar,
         cmd_show,
     )
+    from commands.clear import cmd_clear
+    from commands.help import cmd_help
 
     return {
         "bulk_check": lambda args: cmd_bulk_check(args, state),
