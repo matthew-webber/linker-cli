@@ -10,6 +10,10 @@ sys.path.append(str(Path(__file__).resolve().parent.parent))
 from commands import core as commands
 from commands import clear
 from commands import help as help_cmd
+from commands import debug as debug_cmd
+from commands import sidebar as sidebar_cmd
+from commands import load as load_cmd
+from commands import report as report_cmd
 
 
 @pytest.fixture
@@ -30,14 +34,14 @@ def cli_state():
 
 def test_cmd_sidebar_toggle_on(mock_state, capsys):
     mock_state.get_variable.return_value = False
-    commands.cmd_sidebar([], mock_state)
+    sidebar_cmd.cmd_sidebar([], mock_state)
     mock_state.set_variable.assert_called_once_with("INCLUDE_SIDEBAR", "true")
     assert "Sidebar inclusion: ON" in capsys.readouterr().out
 
 
 def test_cmd_sidebar_set_off(mock_state, capsys):
     mock_state.get_variable.return_value = True
-    commands.cmd_sidebar(["off"], mock_state)
+    sidebar_cmd.cmd_sidebar(["off"], mock_state)
     mock_state.set_variable.assert_called_once_with("INCLUDE_SIDEBAR", "false")
     assert "Sidebar inclusion: OFF" in capsys.readouterr().out
 
@@ -118,7 +122,7 @@ def test_cmd_check_uses_cached_data(monkeypatch, cli_state, capsys):
     cli_state.set_variable("CACHE_FILE", "cache.json")
     monkeypatch.setattr(commands, "_is_cache_valid_for_context", lambda s, c: (True, ""))
     gen = MagicMock()
-    monkeypatch.setattr(commands, "_generate_summary_report", gen)
+    monkeypatch.setattr(report_cmd, "_generate_summary_report", gen)
     cache = MagicMock()
     monkeypatch.setattr(commands, "_cache_page_data", cache)
     commands.cmd_check([], cli_state)
@@ -132,7 +136,7 @@ def test_cmd_check_uses_cached_data(monkeypatch, cli_state, capsys):
 def test_cmd_debug_toggle_on(monkeypatch, mock_state, capsys):
     mock_state.get_variable.return_value = False
     monkeypatch.setattr(commands, "sync_debug_with_state", MagicMock())
-    commands.cmd_debug([], mock_state)
+    debug_cmd.cmd_debug([], mock_state)
     mock_state.set_variable.assert_called_once_with("DEBUG", "true")
     assert "Debug mode: ON" in capsys.readouterr().out
 
@@ -140,7 +144,7 @@ def test_cmd_debug_toggle_on(monkeypatch, mock_state, capsys):
 def test_cmd_debug_set_off(monkeypatch, mock_state, capsys):
     mock_state.get_variable.return_value = True
     monkeypatch.setattr(commands, "sync_debug_with_state", MagicMock())
-    commands.cmd_debug(["off"], mock_state)
+    debug_cmd.cmd_debug(["off"], mock_state)
     mock_state.set_variable.assert_called_once_with("DEBUG", "false")
     assert "Debug mode: OFF" in capsys.readouterr().out
 
@@ -181,11 +185,11 @@ def test_cmd_lookup_success(monkeypatch, cli_state, capsys):
 def test_cmd_load_success(monkeypatch, cli_state, capsys):
     cli_state.excel_data = MagicMock()
     cli_state.excel_data.parse.return_value = "df"
-    monkeypatch.setattr(commands, "get_existing_url", lambda df, row: "http://page")
-    monkeypatch.setattr(commands, "get_proposed_url", lambda df, row: "/new")
-    monkeypatch.setattr(commands, "_update_cache_file_state", MagicMock())
-    monkeypatch.setattr(commands, "count_http", lambda url: 0)
-    commands.cmd_load(["Enterprise", "5"], cli_state)
+    monkeypatch.setattr(load_cmd, "get_existing_url", lambda df, row: "http://page")
+    monkeypatch.setattr(load_cmd, "get_proposed_url", lambda df, row: "/new")
+    monkeypatch.setattr(load_cmd, "_update_cache_file_state", MagicMock())
+    monkeypatch.setattr(load_cmd, "count_http", lambda url: 0)
+    load_cmd.cmd_load(["Enterprise", "5"], cli_state)
     assert cli_state.get_variable("URL") == "http://page"
     assert "Loaded URL" in capsys.readouterr().out
 
@@ -206,11 +210,11 @@ def test_cmd_report_multiple_rows(monkeypatch, cli_state):
     load = MagicMock()
     gen = MagicMock(return_value="file.html")
     opener = MagicMock()
-    monkeypatch.setattr(commands, "cmd_load", load)
-    monkeypatch.setattr(commands, "_generate_report", gen)
+    monkeypatch.setattr(report_cmd, "cmd_load", load)
+    monkeypatch.setattr(report_cmd, "_generate_report", gen)
     monkeypatch.setattr(commands, "_open_file_in_default_app", opener)
     monkeypatch.setattr("builtins.input", lambda _: "n")
-    commands.cmd_report(["Enterprise", "1", "2"], cli_state)
+    report_cmd.cmd_report(["Enterprise", "1", "2"], cli_state)
     assert load.call_count == 2
     assert gen.call_count == 2
     opener.assert_not_called()

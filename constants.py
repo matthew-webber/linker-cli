@@ -102,17 +102,17 @@ def get_commands(state):
     from commands.core import (
         cmd_bulk_check,
         cmd_check,
-        cmd_debug,
         cmd_links,
-        cmd_load,
         cmd_lookup,
         cmd_migrate,
         cmd_open,
-        cmd_report,
         cmd_set,
-        cmd_sidebar,
         cmd_show,
     )
+    from commands.debug import cmd_debug
+    from commands.sidebar import cmd_sidebar
+    from commands.load import cmd_load
+    from commands.report import cmd_report
     from commands.clear import cmd_clear
     from commands.help import cmd_help
 
