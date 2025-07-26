@@ -178,7 +178,7 @@ def analyze_page_links_for_migration(state):
         # Perform automatic lookup
         result = lookup_link_in_dsm(href, state.excel_data, state)
         if result["found"]:
-            print(f"    ✅ Found in DSM - {result['domain']} row {result['row']}")
+            print(f"    ✅ Found in DSM - {result['domain']} - {result['row']}")
             # use shared formatting for new path
             path_str = format_hierarchy(
                 result["proposed_hierarchy"]["root"],
@@ -189,7 +189,7 @@ def analyze_page_links_for_migration(state):
                 prefix = "    " if idx == 0 else "       "
                 print(f"{prefix} {line}")
         else:
-            print(f"    ❌ Not found in DSM - manual migration required")
+            print(f"    ❌ Not found in DSM")
         print()
 
     print(
