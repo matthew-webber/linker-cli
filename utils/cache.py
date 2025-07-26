@@ -89,10 +89,16 @@ def _is_cache_valid_for_context(state, cache_file):
         if current_url and cached_url:
             url_matches = normalize_url(cached_url) == normalize_url(current_url)
             if not url_matches:
-                return False, f"URL mismatch: cached={cached_url}, current={current_url}"
+                return (
+                    False,
+                    f"URL mismatch: cached={cached_url}, current={current_url}",
+                )
 
         if current_domain and cached_domain and cached_domain != current_domain:
-            return False, f"Domain mismatch: cached={cached_domain}, current={current_domain}"
+            return (
+                False,
+                f"Domain mismatch: cached={cached_domain}, current={current_domain}",
+            )
 
         if current_row and cached_row and cached_row != current_row:
             return False, f"Row mismatch: cached={cached_row}, current={current_row}"
@@ -178,7 +184,9 @@ def _update_cache_file_state(state, url=None, domain=None, row=None):
                     if metadata.get("selector"):
                         state.set_variable("SELECTOR", metadata["selector"])
                     if metadata.get("include_sidebar") is not None:
-                        state.set_variable("INCLUDE_SIDEBAR", str(metadata["include_sidebar"]).lower())
+                        state.set_variable(
+                            "INCLUDE_SIDEBAR", str(metadata["include_sidebar"]).lower()
+                        )
                 print(f"📋 Loaded cached data from {Path(found_cache_file).name}")
             else:
                 debug_print(

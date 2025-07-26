@@ -2,10 +2,7 @@
 Command handlers for Linker CLI.
 """
 
-import json
 import re
-import shutil
-import sys
 from io import StringIO
 from contextlib import redirect_stdout
 import subprocess
@@ -15,18 +12,13 @@ from datetime import datetime
 
 # from state import CLIState
 from data.dsm import (
-    count_http,
     load_spreadsheet,
-    get_existing_url,
-    get_proposed_url,
-    get_row_data,
 )
 from utils.core import display_page_data
 
 from constants import DOMAINS
-from utils.core import sync_debug_with_state, normalize_url
 from commands.common import print_help_for_command, display_domains
-from commands.cache import (
+from utils.cache import (
     _update_cache_file_state,
 )
 

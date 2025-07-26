@@ -8,7 +8,7 @@ from data.dsm import (
 from constants import DOMAINS
 from utils.core import debug_print
 from commands.common import print_help_for_command
-from commands.cache import _update_cache_file_state
+from utils.cache import _update_cache_file_state
 
 
 def _bulk_load_url(state, domain_name, row_num):

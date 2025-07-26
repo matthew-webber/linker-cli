@@ -1,4 +1,4 @@
-from commands.cache import _cache_page_data, _is_cache_valid_for_context
+from utils.cache import _cache_page_data, _is_cache_valid_for_context
 from utils.scraping import retrieve_page_data
 from ui.spinner import Spinner
 from utils.core import debug_print
@@ -52,6 +52,8 @@ def cmd_check(args, state):
     print(f"🎯 Using selector: {selector}")
     if include_sidebar:
         print("🔲 Including sidebar content")
+
+    print("🔄 state.current_page_data", state.current_page_data)
 
     # Check if we have cached data that matches the current context
     if state.current_page_data:

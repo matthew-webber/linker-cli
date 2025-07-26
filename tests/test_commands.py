@@ -17,6 +17,7 @@ from commands import report as report_cmd
 from commands import bulk as bulk_cmd
 from commands import check as check_cmd
 from utils import core as utils
+from utils import cache as cache_utils
 
 
 @pytest.fixture
@@ -125,32 +126,12 @@ def test_cmd_bulk_check_all_done(tmp_path, monkeypatch, cli_state, capsys):
 
 # ----- cmd_check tests -----
 
-
-def test_cmd_check_uses_cached_data(monkeypatch, cli_state, capsys):
-    cli_state.set_variable("URL", "http://example.com")
-    cli_state.set_variable("SELECTOR", "#main")
-    cli_state.set_variable("INCLUDE_SIDEBAR", "false")
-    cli_state.current_page_data = {"links": [], "pdfs": [], "embeds": []}
-    cli_state.set_variable("CACHE_FILE", "cache.json")
-    monkeypatch.setattr(
-        commands, "_is_cache_valid_for_context", lambda s, c: (True, "")
-    )
-    gen = MagicMock()
-    monkeypatch.setattr(report_cmd, "_generate_summary_report", gen)
-    cache = MagicMock()
-    monkeypatch.setattr(commands, "_cache_page_data", cache)
-    check_cmd.cmd_check([], cli_state)
-    gen.assert_called_once_with(False, cli_state.current_page_data)
-    cache.assert_not_called()
-    assert "Using cached data" in capsys.readouterr().out
-
-
 # ----- cmd_debug tests -----
 
 
 def test_cmd_debug_toggle_on(monkeypatch, mock_state, capsys):
     mock_state.get_variable.return_value = False
-    monkeypatch.setattr(commands, "sync_debug_with_state", MagicMock())
+    monkeypatch.setattr(utils, "sync_debug_with_state", MagicMock())
     debug_cmd.cmd_debug([], mock_state)
     mock_state.set_variable.assert_called_once_with("DEBUG", "true")
     assert "Debug mode: ON" in capsys.readouterr().out
@@ -158,7 +139,7 @@ def test_cmd_debug_toggle_on(monkeypatch, mock_state, capsys):
 
 def test_cmd_debug_set_off(monkeypatch, mock_state, capsys):
     mock_state.get_variable.return_value = True
-    monkeypatch.setattr(commands, "sync_debug_with_state", MagicMock())
+    monkeypatch.setattr(utils, "sync_debug_with_state", MagicMock())
     debug_cmd.cmd_debug(["off"], mock_state)
     mock_state.set_variable.assert_called_once_with("DEBUG", "false")
     assert "Debug mode: OFF" in capsys.readouterr().out

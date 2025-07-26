@@ -1,5 +1,5 @@
 import csv
-from commands.cache import _cache_page_data
+from utils.cache import _cache_page_data
 from commands.common import print_help_for_command
 from commands.load import _bulk_load_url
 from data.dsm import get_latest_dsm_file, load_spreadsheet

@@ -7,14 +7,13 @@ from datetime import datetime
 
 from utils.core import debug_print
 from commands.core import _open_file_in_default_app
-from commands.cache import _is_cache_valid_for_context, _update_cache_file_state
+
 from commands.load import cmd_load
 from utils.core import display_page_data
 from utils.core import output_internal_links_analysis_detail
 from utils.sitecore import print_hierarchy, print_proposed_hierarchy
 
 
-# stay
 def _capture_migrate_page_mapping_output(state):
     """Capture the output from migrate page mapping functionality."""
     url = state.get_variable("URL")
@@ -38,7 +37,6 @@ def _capture_migrate_page_mapping_output(state):
     return output.getvalue()
 
 
-# stay
 def _capture_output(func, *args, **kwargs):
     """Capture stdout from a function call and return it as a string."""
     old_stdout = sys.stdout
@@ -50,7 +48,6 @@ def _capture_output(func, *args, **kwargs):
         sys.stdout = old_stdout
 
 
-# stay
 def _generate_consolidated_section(state):
     """Generate the consolidated section with enhanced link display."""
     url = state.get_variable("URL")
@@ -242,7 +239,6 @@ def _generate_consolidated_section(state):
     return html
 
 
-# stay
 def _get_copy_value(href):
     if href.startswith("tel:"):
         phone = href.replace("tel:", "").strip()
@@ -262,14 +258,12 @@ def _get_copy_value(href):
         return href
 
 
-# stay
 def _get_report_template_dir():
     template_dir = Path("templates/report")
     template_dir.mkdir(exist_ok=True)
     return template_dir
 
 
-# stay
 def _generate_html_report(
     domain,
     row,
@@ -309,7 +303,6 @@ def _generate_html_report(
 
 
 # check.py
-# stay
 def _sync_report_static_assets(reports_dir):
     template_dir = _get_report_template_dir()
     for file in template_dir.glob("*"):
@@ -318,8 +311,9 @@ def _sync_report_static_assets(reports_dir):
             shutil.copy(file, dest)
 
 
-# stay
 def _generate_report(state, prompt_open=True, force_regenerate=False):
+    from utils.cache import _is_cache_valid_for_context
+
     need_to_check = False
     if not state.current_page_data:
         need_to_check = True
