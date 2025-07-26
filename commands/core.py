@@ -26,8 +26,6 @@ from dsm_utils import (
 from page_extractor import retrieve_page_data, display_page_data
 from migration import migrate
 from spinner import Spinner
-import re
-import json
 
 from constants import DOMAINS
 from utils import debug_print, sync_debug_with_state, normalize_url
