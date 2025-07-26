@@ -182,22 +182,6 @@ def test_cmd_links(monkeypatch, cli_state):
     func.assert_called_once_with(cli_state)
 
 
-# ----- cmd_lookup test -----
-
-
-def test_cmd_lookup_success(monkeypatch, cli_state, capsys):
-    cli_state.excel_data = "sheet"
-    lookup = MagicMock(return_value={})
-    display = MagicMock()
-    import lookup_utils
-
-    monkeypatch.setattr(lookup_utils, "lookup_link_in_dsm", lookup)
-    monkeypatch.setattr(lookup_utils, "display_link_lookup_result", display)
-    commands.cmd_lookup(["http://example.com"], cli_state)
-    lookup.assert_called_once_with("http://example.com", "sheet", cli_state)
-    display.assert_called_once_with(lookup.return_value)
-
-
 # ----- cmd_load test -----
 
 

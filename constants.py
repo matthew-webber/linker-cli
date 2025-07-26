@@ -102,8 +102,6 @@ def get_commands(state):
     from commands.core import (
         cmd_check,
         cmd_links,
-        cmd_lookup,
-        cmd_migrate,
         cmd_open,
         cmd_set,
         cmd_show,
@@ -124,8 +122,6 @@ def get_commands(state):
         "help": lambda args: cmd_help(args, state),
         "links": lambda args: cmd_links(args, state),
         "load": lambda args: cmd_load(args, state),
-        "lookup": lambda args: cmd_lookup(args, state),
-        "migrate": lambda args: cmd_migrate(args, state),
         "open": lambda args: cmd_open(args, state),
         "report": lambda args: cmd_report(args, state),
         "set": lambda args: cmd_set(args, state),

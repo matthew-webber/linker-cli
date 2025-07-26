@@ -128,33 +128,6 @@ def lookup_link_in_dsm(link_url, excel_data=None, state=None):
     return {"found": False}
 
 
-def display_link_lookup_result(result):
-    """Display the result of a link lookup in a user-friendly format."""
-    if not result["found"]:
-        print("❌ Link not found in DSM spreadsheet")
-        if "error" in result:
-            print(f"   Error: {result['error']}")
-        return
-
-    print("✅ Link found in DSM!")
-    print(f"📍 Domain: {result['domain']}")
-    print(f"📊 Row: {result['row']}")
-    print(f"🔗 Existing URL: {result['existing_url']}")
-    print(f"🎯 Proposed URL: {result['proposed_url']}")
-    print()
-    print("🗂️  NEW SITE NAVIGATION PATH:")
-    print(f"   Start at: {result['proposed_hierarchy']['root']} (Sites)")
-
-    for segment in result["proposed_hierarchy"]["segments"]:
-        print(f"   └─ Navigate to: {segment}")
-
-    if not result["proposed_hierarchy"]["segments"]:
-        print("   └─ Target is at root level")
-
-    print()
-    print("💡 Use this path to navigate the Sitecore widget and select the target page")
-
-
 def analyze_page_links_for_migration(state):
     """Analyze all links on the current page and identify which ones need migration lookup."""
     debug_print("Analyzing page links for migration...")

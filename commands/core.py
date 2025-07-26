@@ -103,35 +103,6 @@ def cmd_links(args, state):
     analyze_page_links_for_migration(state)
 
 
-def cmd_lookup(args, state):
-    """Look up a link URL in the DSM spreadsheet to find its new location."""
-    if not args:
-        return print_help_for_command("lookup", state)
-
-    if not state.excel_data:
-        from dsm_utils import get_latest_dsm_file, load_spreadsheet
-
-        dsm_file = get_latest_dsm_file()
-        if not dsm_file:
-            print(
-                "❌ No DSM file found. Set DSM_FILE manually or place a dsm-*.xlsx file in the directory."
-            )
-            return
-        try:
-            state.excel_data = load_spreadsheet(dsm_file)
-            state.set_variable("DSM_FILE", dsm_file)
-            print(f"📊 Loaded DSM file: {dsm_file}")
-        except Exception as e:
-            print(f"❌ Failed to load DSM file: {e}")
-            return
-
-    link_url = args[0]
-    from lookup_utils import lookup_link_in_dsm, display_link_lookup_result
-
-    result = lookup_link_in_dsm(link_url, state.excel_data, state)
-    display_link_lookup_result(result)
-
-
 def _open_file_in_default_app(file_path):
     system = platform.system()
     file_path = Path(file_path).resolve()
