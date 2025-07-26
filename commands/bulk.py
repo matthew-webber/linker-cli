@@ -2,8 +2,8 @@ import csv
 from commands.cache import _cache_page_data
 from commands.common import print_help_for_command
 from commands.load import _bulk_load_url
-from dsm_utils import get_latest_dsm_file, load_spreadsheet
-from page_extractor import retrieve_page_data
+from data.dsm import get_latest_dsm_file, load_spreadsheet
+from utils.scraping import retrieve_page_data
 from utils.core import debug_print
 
 

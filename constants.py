@@ -1,6 +1,3 @@
-from commands.check import cmd_check
-
-
 DOMAINS = [
     {
         "full_name": "Enterprise",
@@ -114,6 +111,7 @@ def get_commands(state):
     from commands.clear import cmd_clear
     from commands.common import cmd_help, cmd_debug
     from commands.bulk import cmd_bulk_check
+    from commands.check import cmd_check
 
     return {
         "bulk_check": lambda args: cmd_bulk_check(args, state),

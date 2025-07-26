@@ -1,13 +1,111 @@
 """
-Link lookup and analysis utilities for Linker CLI.
+DSM/Spreadsheet utilities for Linker CLI.
 """
 
+import os
 import re
+import glob
 from urllib.parse import urlparse
-from constants import DOMAINS, DOMAIN_MAPPING
-from dsm_utils import get_existing_url, get_proposed_url
+import pandas as pd
+from pathlib import Path
+
+from constants import DOMAINS
+
 from utils.core import debug_print
-from migrate_hierarchy import format_hierarchy
+
+DSM_DIR = Path(".")
+
+
+def get_latest_dsm_file():
+    pattern = str(DSM_DIR / "dsm-*.xlsx")
+    files = glob.glob(pattern)
+
+    debug_print(f"Searching for DSM files with pattern: {pattern}")
+    debug_print(f"Found files: {files}")
+
+    latest = None
+    latest_date = None
+
+    for f in files:
+        basename = os.path.basename(f)
+        m = re.match(r"dsm-(\d{4})\.xlsx", basename)
+
+        if m:
+            dt = m.group(1)
+            try:
+                month = int(dt[:2])
+                day = int(dt[2:])
+                date = (month, day)
+                if latest_date is None or date > latest_date:
+                    latest_date = date
+                    latest = f
+                    debug_print(f"New latest DSM candidate: {f} (date {date})")
+            except ValueError:
+                debug_print(f"Skipping invalid DSM filename: {basename}")
+                continue
+
+    debug_print(f"Selected latest DSM file: {latest}")
+    return latest
+
+
+def load_spreadsheet(path):
+    debug_print(f"Loading spreadsheet: {path}")
+    return pd.ExcelFile(path)
+
+
+def get_column_value(sheet_df, excel_row, column_name):
+    df_idx = excel_row
+
+    target_col = next(
+        (
+            c
+            for c in sheet_df.columns
+            if isinstance(c, str) and c.strip().upper() == column_name.upper()
+        ),
+        None,
+    )
+
+    if not target_col:
+        debug_print(f"Column '{column_name}' not found in sheet")
+        return ""
+
+    try:
+        row = sheet_df.iloc[df_idx]
+        value = row[target_col]
+        return str(value) if pd.notna(value) else ""
+
+    except IndexError:
+        debug_print(f"Row index {df_idx} out of range")
+        return ""
+
+    except Exception as e:
+        debug_print(f"Error retrieving {column_name}: {e}")
+        return ""
+
+
+def get_existing_url(sheet_df, excel_row, existing_url_col_name="EXISTING URL"):
+    return get_column_value(sheet_df, excel_row, existing_url_col_name)
+
+
+def get_proposed_url(sheet_df, excel_row, proposed_url_col_name="PROPOSED URL"):
+    return get_column_value(sheet_df, excel_row, proposed_url_col_name)
+
+
+def get_row_data(sheet_df, excel_row, columns=None):
+    debug_print(f"Extracting row data from Excel row {excel_row}")
+    if columns is None:
+        columns = ["EXISTING URL", "PROPOSED URL"]
+    result = {}
+    for col in columns:
+        result[col.upper()] = get_column_value(sheet_df, excel_row, col)
+    debug_print(f"Extracted row data: {result}")
+    return result
+
+
+def count_http(url):
+    cnt = url.count("http")
+    debug_print(f"Counted {cnt} occurrences of 'http' in URL")
+    return cnt
 
 
 def lookup_link_in_dsm(link_url, excel_data=None, state=None):
@@ -36,6 +134,7 @@ def lookup_link_in_dsm(link_url, excel_data=None, state=None):
     parsed_url = urlparse(link_url)
     # Reconstruct URL without fragment (anchor)
     normalized_link = f"{parsed_url.scheme}://{parsed_url.netloc}{parsed_url.path}"
+
     if parsed_url.query:
         normalized_link += f"?{parsed_url.query}"
     # Remove trailing slash
@@ -60,6 +159,7 @@ def lookup_link_in_dsm(link_url, excel_data=None, state=None):
             "worksheet_header_row": 0,
         }
     ]
+
     for domain in DOMAINS + bonus_domains:
         try:
             df = excel_data.parse(
@@ -96,7 +196,7 @@ def lookup_link_in_dsm(link_url, excel_data=None, state=None):
 
                     # Generate the proposed hierarchy using existing functions
                     try:
-                        from migrate_hierarchy import get_sitecore_root
+                        from utils.sitecore import get_sitecore_root
 
                         root = get_sitecore_root(existing_url)
                     except ImportError:
@@ -126,72 +226,3 @@ def lookup_link_in_dsm(link_url, excel_data=None, state=None):
 
     debug_print("Link not found in any domain")
     return {"found": False}
-
-
-def output_internal_links_analysis_detail(state):
-    """Output detailed analysis of internal links and the new paths they should take if available."""
-    debug_print("Analyzing internal links...")
-    debug_print(f"Current page data: {state.current_page_data}")
-    if not state.current_page_data:
-        print(
-            "❌ No page data available. Run 'check' first to analyze the current page."
-        )
-        return
-
-    links = [
-        *state.current_page_data.get("links", []),
-        *state.current_page_data.get("sidebar_links", []),
-    ]
-    pdfs = [
-        *state.current_page_data.get("pdfs", []),
-        *state.current_page_data.get("sidebar_pdfs", []),
-    ]
-
-    if not links and not pdfs:
-        print("No links found on the current page.")
-        return
-
-    print("🔗 ANALYZING INTERNAL LINKS")
-    print("=" * 50)
-
-    # Filter out internal links based on known domains
-    internal_domains = set(DOMAIN_MAPPING.keys())
-
-    internal_links = []
-
-    for text, href, status in links + pdfs:
-        parsed = urlparse(href)
-        if parsed.hostname in internal_domains:
-            internal_links.append((text, href, status))
-
-    if not internal_links:
-        print("✅ No internal links found.")
-        return
-
-    print(f"Found {len(internal_links)} internal links:")
-    print()
-
-    for i, (text, href, status) in enumerate(internal_links, 1):
-        print(f"{i:2}. {text[:60]}")
-        print(f"    🔗 {href}")
-
-        # Perform automatic lookup
-        result = lookup_link_in_dsm(href, state.excel_data, state)
-        if result["found"]:
-            print(f"    ✅ Found in DSM - {result['domain']} - {result['row']}")
-            # use shared formatting for new path
-            path_str = format_hierarchy(
-                result["proposed_hierarchy"]["root"],
-                result["proposed_hierarchy"]["segments"],
-            )
-            for idx, line in enumerate(path_str.split("\n")):
-                # Prefix first line with 🎯, subsequent lines align
-                prefix = "    " if idx == 0 else "       "
-                print(f"{prefix} {line}")
-        else:
-            print(f"    ❌ Not found in DSM")
-        print()
-
-    print(
-        "💡 Use 'lookup <url>' for detailed navigation instructions for any specific link"
-    )

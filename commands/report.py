@@ -9,9 +9,9 @@ from utils.core import debug_print
 from commands.core import _open_file_in_default_app
 from commands.cache import _is_cache_valid_for_context, _update_cache_file_state
 from commands.load import cmd_load
-from page_extractor import display_page_data
-from lookup_utils import output_internal_links_analysis_detail
-from migrate_hierarchy import print_hierarchy, print_proposed_hierarchy
+from utils.core import display_page_data
+from utils.core import output_internal_links_analysis_detail
+from utils.sitecore import print_hierarchy, print_proposed_hierarchy
 
 
 # stay
@@ -62,7 +62,7 @@ def _generate_consolidated_section(state):
         return "<p>No page data available.</p>"
 
     try:
-        from migrate_hierarchy import get_sitecore_root
+        from utils.sitecore import get_sitecore_root
 
         root = get_sitecore_root(url)
         if url:
@@ -186,7 +186,7 @@ def _generate_consolidated_section(state):
             internal_hierarchy = ""
             if is_internal:
                 try:
-                    from lookup_utils import lookup_link_in_dsm
+                    from data.dsm import lookup_link_in_dsm
 
                     lookup_result = lookup_link_in_dsm(href, state.excel_data, state)
                     hierarchy = (
@@ -309,37 +309,6 @@ def _generate_html_report(
 
 
 # check.py
-def _generate_summary_report(include_sidebar, data):
-    links_count = len(data.get("links", []))
-    pdfs_count = len(data.get("pdfs", []))
-    embeds_count = len(data.get("embeds", []))
-
-    sidebar_links_count = len(data.get("sidebar_links", []))
-    sidebar_pdfs_count = len(data.get("sidebar_pdfs", []))
-    sidebar_embeds_count = len(data.get("sidebar_embeds", []))
-
-    total_links = links_count + sidebar_links_count
-    total_pdfs = pdfs_count + sidebar_pdfs_count
-    total_embeds = embeds_count + sidebar_embeds_count
-
-    if include_sidebar and (
-        sidebar_links_count > 0 or sidebar_pdfs_count > 0 or sidebar_embeds_count > 0
-    ):
-        print(
-            f"📊 Main content: {links_count} links, {pdfs_count} PDFs, {embeds_count} embeds"
-        )
-        print(
-            f"📊 Sidebar content: {sidebar_links_count} links, {sidebar_pdfs_count} PDFs, {sidebar_embeds_count} embeds"
-        )
-        print(
-            f"📊 Total: {total_links} links, {total_pdfs} PDFs, {total_embeds} embeds"
-        )
-    else:
-        print(
-            f"📊 Summary: {total_links} links, {total_pdfs} PDFs, {total_embeds} embeds found"
-        )
-
-
 # stay
 def _sync_report_static_assets(reports_dir):
     template_dir = _get_report_template_dir()

@@ -1,7 +1,38 @@
 from commands.cache import _cache_page_data, _is_cache_valid_for_context
-from page_extractor import retrieve_page_data
-from spinner import Spinner
+from utils.scraping import retrieve_page_data
+from ui.spinner import Spinner
 from utils.core import debug_print
+
+
+def _generate_summary_report(include_sidebar, data):
+    links_count = len(data.get("links", []))
+    pdfs_count = len(data.get("pdfs", []))
+    embeds_count = len(data.get("embeds", []))
+
+    sidebar_links_count = len(data.get("sidebar_links", []))
+    sidebar_pdfs_count = len(data.get("sidebar_pdfs", []))
+    sidebar_embeds_count = len(data.get("sidebar_embeds", []))
+
+    total_links = links_count + sidebar_links_count
+    total_pdfs = pdfs_count + sidebar_pdfs_count
+    total_embeds = embeds_count + sidebar_embeds_count
+
+    if include_sidebar and (
+        sidebar_links_count > 0 or sidebar_pdfs_count > 0 or sidebar_embeds_count > 0
+    ):
+        print(
+            f"📊 Main content: {links_count} links, {pdfs_count} PDFs, {embeds_count} embeds"
+        )
+        print(
+            f"📊 Sidebar content: {sidebar_links_count} links, {sidebar_pdfs_count} PDFs, {sidebar_embeds_count} embeds"
+        )
+        print(
+            f"📊 Total: {total_links} links, {total_pdfs} PDFs, {total_embeds} embeds"
+        )
+    else:
+        print(
+            f"📊 Summary: {total_links} links, {total_pdfs} PDFs, {total_embeds} embeds found"
+        )
 
 
 def cmd_check(args, state):
@@ -31,7 +62,6 @@ def cmd_check(args, state):
         if is_valid:
             print("📋 Using cached data")
             data = state.current_page_data
-            from commands.report import _generate_summary_report
 
             _generate_summary_report(include_sidebar, data)
             print("💡 Use 'show page' to see detailed results")
@@ -58,8 +88,6 @@ def cmd_check(args, state):
     if "error" in data:
         print(f"❌ Failed to extract data: {data['error']}")
         return
-
-    from commands.report import _generate_summary_report
 
     _generate_summary_report(include_sidebar, data)
     print("💡 Use 'show page' to see detailed results")

@@ -6,11 +6,11 @@ from urllib.parse import urljoin, urlparse
 from constants import get_commands
 from state import CLIState
 
-from dsm_utils import (
+from data.dsm import (
     get_latest_dsm_file,
     load_spreadsheet,
 )
-from page_extractor import (
+from utils.scraping import (
     check_status_code,
 )
 import requests

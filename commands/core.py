@@ -14,14 +14,14 @@ from pathlib import Path
 from datetime import datetime
 
 # from state import CLIState
-from dsm_utils import (
+from data.dsm import (
     count_http,
     load_spreadsheet,
     get_existing_url,
     get_proposed_url,
     get_row_data,
 )
-from page_extractor import display_page_data
+from utils.core import display_page_data
 
 from constants import DOMAINS
 from utils.core import sync_debug_with_state, normalize_url
@@ -33,7 +33,7 @@ from commands.cache import (
 
 def cmd_links(args, state):
     """Analyze all links on the current page for migration requirements."""
-    from lookup_utils import output_internal_links_analysis_detail
+    from utils.core import output_internal_links_analysis_detail
 
     output_internal_links_analysis_detail(state)
 

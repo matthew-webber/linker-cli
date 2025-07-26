@@ -6,8 +6,6 @@ import pytest
 # ensure commands module is importable from repo root
 import sys
 
-import commands.check
-
 sys.path.append(str(Path(__file__).resolve().parent.parent))
 
 from commands import core as commands
@@ -18,6 +16,7 @@ from commands import load as load_cmd
 from commands import report as report_cmd
 from commands import bulk as bulk_cmd
 from commands import check as check_cmd
+from utils import core as utils
 
 
 @pytest.fixture
@@ -178,9 +177,12 @@ def test_cmd_help_output(cli_state, capsys):
 
 def test_cmd_links(monkeypatch, cli_state):
     func = MagicMock()
-    import lookup_utils
 
-    monkeypatch.setattr(lookup_utils, "output_internal_links_analysis_detail", func)
+    monkeypatch.setattr(
+        utils,
+        "output_internal_links_analysis_detail",
+        func,
+    )
     commands.cmd_links([], cli_state)
     func.assert_called_once_with(cli_state)
 
