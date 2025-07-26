@@ -98,9 +98,9 @@ def cmd_check(args, state):
 
 def cmd_links(args, state):
     """Analyze all links on the current page for migration requirements."""
-    from lookup_utils import analyze_page_links_for_migration
+    from lookup_utils import output_internal_links_analysis_detail
 
-    analyze_page_links_for_migration(state)
+    output_internal_links_analysis_detail(state)
 
 
 def _open_file_in_default_app(file_path):

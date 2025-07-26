@@ -128,9 +128,9 @@ def lookup_link_in_dsm(link_url, excel_data=None, state=None):
     return {"found": False}
 
 
-def analyze_page_links_for_migration(state):
-    """Analyze all links on the current page and identify which ones need migration lookup."""
-    debug_print("Analyzing page links for migration...")
+def output_internal_links_analysis_detail(state):
+    """Output detailed analysis of internal links and the new paths they should take if available."""
+    debug_print("Analyzing internal links...")
     debug_print(f"Current page data: {state.current_page_data}")
     if not state.current_page_data:
         print(
@@ -151,27 +151,27 @@ def analyze_page_links_for_migration(state):
         print("No links found on the current page.")
         return
 
-    print("🔗 ANALYZING LINKS FOR MIGRATION")
+    print("🔗 ANALYZING INTERNAL LINKS")
     print("=" * 50)
 
-    # Filter for internal links that might need migration
+    # Filter out internal links based on known domains
     internal_domains = set(DOMAIN_MAPPING.keys())
 
-    migration_candidates = []
+    internal_links = []
 
     for text, href, status in links + pdfs:
         parsed = urlparse(href)
         if parsed.hostname in internal_domains:
-            migration_candidates.append((text, href, status))
+            internal_links.append((text, href, status))
 
-    if not migration_candidates:
-        print("✅ No internal links found that require migration lookup.")
+    if not internal_links:
+        print("✅ No internal links found.")
         return
 
-    print(f"Found {len(migration_candidates)} internal links that may need migration:")
+    print(f"Found {len(internal_links)} internal links:")
     print()
 
-    for i, (text, href, status) in enumerate(migration_candidates, 1):
+    for i, (text, href, status) in enumerate(internal_links, 1):
         print(f"{i:2}. {text[:60]}")
         print(f"    🔗 {href}")
 

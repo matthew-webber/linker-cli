@@ -10,7 +10,7 @@ from commands.core import _open_file_in_default_app
 from commands.cache import _is_cache_valid_for_context, _update_cache_file_state
 from commands.load import cmd_load
 from page_extractor import display_page_data
-from lookup_utils import analyze_page_links_for_migration
+from lookup_utils import output_internal_links_analysis_detail
 from migrate_hierarchy import print_hierarchy, print_proposed_hierarchy
 
 
@@ -66,12 +66,16 @@ def _generate_consolidated_section(state):
             from urllib.parse import urlparse
 
             parsed = urlparse(url)
-            existing_segments = [seg for seg in parsed.path.strip("/").split("/") if seg]
+            existing_segments = [
+                seg for seg in parsed.path.strip("/").split("/") if seg
+            ]
         else:
             existing_segments = []
 
         if proposed_path:
-            proposed_segments = [seg for seg in proposed_path.strip("/").split("/") if seg]
+            proposed_segments = [
+                seg for seg in proposed_path.strip("/").split("/") if seg
+            ]
         else:
             proposed_segments = []
     except Exception:
@@ -153,7 +157,9 @@ def _generate_consolidated_section(state):
             try:
                 status = int(status)
             except (ValueError, TypeError):
-                debug_print(f"Invalid status code for {href}: {status} <-- status rec'd")
+                debug_print(
+                    f"Invalid status code for {href}: {status} <-- status rec'd"
+                )
                 status = 0
 
             if status == 200:
@@ -169,6 +175,7 @@ def _generate_consolidated_section(state):
 
             from urllib.parse import urlparse
             from constants import DOMAIN_MAPPING
+
             parsed = urlparse(href)
             href_hostname = parsed.hostname
             internal_domains = set(DOMAIN_MAPPING.keys())
@@ -179,15 +186,23 @@ def _generate_consolidated_section(state):
                     from lookup_utils import lookup_link_in_dsm
 
                     lookup_result = lookup_link_in_dsm(href, state.excel_data, state)
-                    hierarchy = lookup_result.get("proposed_hierarchy", {}) if lookup_result else {}
+                    hierarchy = (
+                        lookup_result.get("proposed_hierarchy", {})
+                        if lookup_result
+                        else {}
+                    )
                     segments = hierarchy.get("segments", [])
                     root_name = hierarchy.get("root", "Sites")
-                    internal_hierarchy = f"<div class='internal-hierarchy'>   → {root_name}"
+                    internal_hierarchy = (
+                        f"<div class='internal-hierarchy'>   → {root_name}"
+                    )
                     for segment in segments:
                         internal_hierarchy += f" / {segment}"
                     internal_hierarchy += "</div>"
                 except Exception:
-                    internal_hierarchy = "<div class='internal-hierarchy'>   → Sites</div>"
+                    internal_hierarchy = (
+                        "<div class='internal-hierarchy'>   → Sites</div>"
+                    )
 
             is_contact_link = href.startswith(("tel:", "mailto:"))
             is_pdf_link = href.lower().endswith(".pdf")
@@ -270,9 +285,7 @@ def _generate_html_report(
     kanban_html = ""
     if kanban_id and kanban_id.strip():
         kanban_url = f"https://planner.cloud.microsoft/webui/v1/plan/aF9AETwLXEi oMF3ADqLdpWQADWIy/view/board/task/{kanban_id.strip()}"
-        kanban_html = (
-            f'<div class="kanban-link"><a href="{kanban_url}" onclick="window.open(this.href, \'_blank\', \'noopener,noreferrer,width=800,height=1200\'); return false;" class="kanban-button">📋 Kanban card</a></div>'
-        )
+        kanban_html = f'<div class="kanban-link"><a href="{kanban_url}" onclick="window.open(this.href, \'_blank\', \'noopener,noreferrer,width=800,height=1200\'); return false;" class="kanban-button">📋 Kanban card</a></div>'
         debug_print(f"Generated Kanban link: {kanban_html}")
     else:
         debug_print("No Kanban ID provided.")
@@ -343,6 +356,7 @@ def _generate_report(state, prompt_open=True, force_regenerate=False):
     if need_to_check:
         print(f"🔄 Running 'check' to gather page data... ({reason})")
         from commands.core import cmd_check
+
         cmd_check([], state)
         if not state.current_page_data:
             print("❌ Failed to gather page data. Cannot generate report.")
@@ -411,7 +425,7 @@ def _generate_report(state, prompt_open=True, force_regenerate=False):
     migrate_output = _capture_migrate_page_mapping_output(state)
 
     print("  ▶ Capturing links analysis...")
-    links_output = _capture_output(analyze_page_links_for_migration, state)
+    links_output = _capture_output(output_internal_links_analysis_detail, state)
 
     print("  ▶ Generating consolidated summary...")
     consolidated_output = _generate_consolidated_section(state)
@@ -439,10 +453,15 @@ def _generate_report(state, prompt_open=True, force_regenerate=False):
     _sync_report_static_assets(reports_dir)
 
     if prompt_open:
-        open_report_now = input("Do you want to open the report in your browser now? [Y/n]: ").strip().lower()
+        open_report_now = (
+            input("Do you want to open the report in your browser now? [Y/n]: ")
+            .strip()
+            .lower()
+        )
         if open_report_now in ["", "y", "yes"]:
             try:
                 from commands.core import cmd_open
+
                 cmd_open(["report"], state)
             except Exception as e:
                 print(f"❌ Failed to open report: {e}")
@@ -468,7 +487,9 @@ def cmd_report(args, state):
 
         for row in rows:
             cmd_load([domain, row], state)
-            report_file = _generate_report(state, prompt_open=False, force_regenerate=force_regenerate)
+            report_file = _generate_report(
+                state, prompt_open=False, force_regenerate=force_regenerate
+            )
             if report_file:
                 report_files.append(report_file)
 
@@ -489,4 +510,3 @@ def cmd_report(args, state):
         return
 
     _generate_report(state, prompt_open=True, force_regenerate=force_regenerate)
-

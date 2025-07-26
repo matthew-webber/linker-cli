@@ -177,7 +177,7 @@ def test_cmd_links(monkeypatch, cli_state):
     func = MagicMock()
     import lookup_utils
 
-    monkeypatch.setattr(lookup_utils, "analyze_page_links_for_migration", func)
+    monkeypatch.setattr(lookup_utils, "output_internal_links_analysis_detail", func)
     commands.cmd_links([], cli_state)
     func.assert_called_once_with(cli_state)
 
