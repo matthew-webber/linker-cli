@@ -100,7 +100,6 @@ DOMAIN_MAPPING = {
 def get_commands(state):
     """Dynamically load and return the COMMANDS dictionary."""
     from commands.core import (
-        cmd_bulk_check,
         cmd_check,
         cmd_links,
         cmd_lookup,
@@ -109,12 +108,12 @@ def get_commands(state):
         cmd_set,
         cmd_show,
     )
-    from commands.debug import cmd_debug
     from commands.sidebar import cmd_sidebar
     from commands.load import cmd_load
     from commands.report import cmd_report
     from commands.clear import cmd_clear
-    from commands.help import cmd_help
+    from commands.common import cmd_help, cmd_debug
+    from commands.bulk import cmd_bulk_check
 
     return {
         "bulk_check": lambda args: cmd_bulk_check(args, state),
