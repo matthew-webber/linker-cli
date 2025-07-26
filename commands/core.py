@@ -22,7 +22,6 @@ from dsm_utils import (
     get_row_data,
 )
 from page_extractor import display_page_data
-from migration import migrate
 
 from constants import DOMAINS
 from utils.core import sync_debug_with_state, normalize_url
