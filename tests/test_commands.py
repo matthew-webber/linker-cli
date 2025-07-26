@@ -6,6 +6,8 @@ import pytest
 # ensure commands module is importable from repo root
 import sys
 
+import commands.check
+
 sys.path.append(str(Path(__file__).resolve().parent.parent))
 
 from commands import core as commands
@@ -15,6 +17,7 @@ from commands import sidebar as sidebar_cmd
 from commands import load as load_cmd
 from commands import report as report_cmd
 from commands import bulk as bulk_cmd
+from commands import check as check_cmd
 
 
 @pytest.fixture
@@ -137,7 +140,7 @@ def test_cmd_check_uses_cached_data(monkeypatch, cli_state, capsys):
     monkeypatch.setattr(report_cmd, "_generate_summary_report", gen)
     cache = MagicMock()
     monkeypatch.setattr(commands, "_cache_page_data", cache)
-    commands.cmd_check([], cli_state)
+    check_cmd.cmd_check([], cli_state)
     gen.assert_called_once_with(False, cli_state.current_page_data)
     cache.assert_not_called()
     assert "Using cached data" in capsys.readouterr().out

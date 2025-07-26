@@ -6,7 +6,7 @@ import re
 from urllib.parse import urlparse
 from constants import DOMAINS, DOMAIN_MAPPING
 from dsm_utils import get_existing_url, get_proposed_url
-from utils import debug_print
+from utils.core import debug_print
 from migrate_hierarchy import format_hierarchy
 
 

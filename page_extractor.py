@@ -7,7 +7,7 @@ from bs4 import BeautifulSoup
 from urllib.parse import urljoin, urlparse
 from pathlib import Path
 
-from utils import debug_print, normalize_url, check_status_code
+from utils.core import debug_print, normalize_url, check_status_code
 
 CACHE_DIR = Path("migration_cache")
 CACHE_DIR.mkdir(exist_ok=True)

@@ -4,7 +4,7 @@ Migration logic for Linker CLI.
 
 from migrate_hierarchy import print_hierarchy, print_proposed_hierarchy
 from link_mapping import launch_link_mapping
-from utils import debug_print
+from utils.core import debug_print
 
 
 def migrate(state, url=None):

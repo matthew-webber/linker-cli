@@ -3,7 +3,7 @@ import re
 from pathlib import Path
 from datetime import datetime
 
-from utils import debug_print, normalize_url
+from utils.core import debug_print, normalize_url
 
 CACHE_DIR = Path("migration_cache")
 CACHE_DIR.mkdir(exist_ok=True)

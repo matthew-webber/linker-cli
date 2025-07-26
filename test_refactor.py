@@ -9,7 +9,7 @@ import os
 sys.path.insert(0, os.path.dirname(__file__))
 
 from commands.cache import _is_cache_valid_for_context
-from utils import normalize_url
+from utils.core import normalize_url
 
 
 # Mock state class for testing

@@ -1,3 +1,6 @@
+from commands.check import cmd_check
+
+
 DOMAINS = [
     {
         "full_name": "Enterprise",
@@ -100,7 +103,6 @@ DOMAIN_MAPPING = {
 def get_commands(state):
     """Dynamically load and return the COMMANDS dictionary."""
     from commands.core import (
-        cmd_check,
         cmd_links,
         cmd_open,
         cmd_set,

@@ -16,7 +16,7 @@ from page_extractor import (
 import requests
 from bs4 import BeautifulSoup
 
-from utils import debug_print, sync_debug_with_state, set_debug
+from utils.core import debug_print, sync_debug_with_state, set_debug
 
 # Toggle debugging at top level (default: on)
 warnings.filterwarnings("ignore", category=UserWarning, module="openpyxl")
@@ -65,7 +65,7 @@ def execute_command(command, args):
             print("\n⚠️  Command interrupted")
         except Exception as e:
             print(f"❌ Command error: {e}")
-            from utils import DEBUG
+            from utils.core import DEBUG
 
             if DEBUG:
                 import traceback

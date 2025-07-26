@@ -1,5 +1,5 @@
 from constants import DOMAINS
-from utils import sync_debug_with_state
+from utils.core import sync_debug_with_state
 
 
 def _get_var_description(var):

@@ -3,7 +3,7 @@ State management for Linker CLI.
 """
 
 import re
-from utils import debug_print
+from utils.core import debug_print
 
 
 class CLIState:

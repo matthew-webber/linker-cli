@@ -1,9 +1,10 @@
+import csv
 from commands.cache import _cache_page_data
 from commands.common import print_help_for_command
 from commands.load import _bulk_load_url
 from dsm_utils import get_latest_dsm_file, load_spreadsheet
 from page_extractor import retrieve_page_data
-from utils import debug_print
+from utils.core import debug_print
 
 
 from pathlib import Path

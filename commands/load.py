@@ -6,7 +6,7 @@ from dsm_utils import (
     get_proposed_url,
 )
 from constants import DOMAINS
-from utils import debug_print
+from utils.core import debug_print
 from commands.common import print_help_for_command
 from commands.cache import _update_cache_file_state
 
