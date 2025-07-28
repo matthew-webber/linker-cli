@@ -94,3 +94,12 @@ class CLIState:
             debug_print("All required variables are set.")
 
         return missing, invalid
+
+    def reset_page_context_state(self):
+        """Reset page-specific variables to their defaults."""
+        self.variables["URL"] = ""
+        self.variables["DOMAIN"] = ""
+        self.variables["ROW"] = ""
+        self.variables["KANBAN_ID"] = ""
+        self.variables["PROPOSED_PATH"] = ""
+        debug_print("Variables reset to defaults.")

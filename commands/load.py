@@ -13,6 +13,8 @@ from utils.cache import _update_cache_file_state
 
 def cmd_load(args, state):
     """Handle the 'load' command for loading URLs from spreadsheet."""
+    state.reset_page_context_state()
+
     if not args or len(args) < 2:
         return print_help_for_command("load", state)
 
