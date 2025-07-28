@@ -288,7 +288,7 @@ def cmd_bulk_check(args, state):
                     selector = "#main"
 
                 if state.current_page_data:
-                    print(f"  � Using cached data")
+                    print(f"  🗂️ Using cached data")
                     data = state.current_page_data
                 else:
                     # Run the check
