@@ -361,19 +361,7 @@ def _generate_report(state, prompt_open=True, force_regenerate=False):
                     if report_mtime >= cache_mtime:
                         print(f"📋 Report already exists and is up-to-date: {filename}")
                         if prompt_open:
-                            open_report_now = (
-                                input(
-                                    "Do you want to open the existing report in your browser now? [Y/n]: "
-                                )
-                                .strip()
-                                .lower()
-                            )
-                            if open_report_now in ["", "y", "yes"]:
-                                try:
-                                    _open_file_in_default_app(report_path)
-                                except Exception as e:
-                                    print(f"❌ Failed to open report: {e}")
-                                    debug_print(f"Full error: {e}")
+                            prompt_to_open_report(report_path)
                         return str(filename)
                     else:
                         print(
@@ -444,6 +432,21 @@ def _generate_report(state, prompt_open=True, force_regenerate=False):
                 debug_print(f"Full error: {e}")
 
     return filename
+
+def prompt_to_open_report(report_path):
+    open_report_now = (
+                                input(
+                                    "Do you want to open the existing report in your browser now? [Y/n]: "
+                                )
+                                .strip()
+                                .lower()
+                            )
+    if open_report_now in ["", "y", "yes"]:
+        try:
+            _open_file_in_default_app(report_path)
+        except Exception as e:
+            print(f"❌ Failed to open report: {e}")
+            debug_print(f"Full error: {e}")
 
 
 def cmd_report(args, state):
