@@ -111,14 +111,14 @@ def test_cmd_bulk_check_creates_template(tmp_path, monkeypatch, cli_state, capsy
     bulk_cmd.cmd_bulk_check([str(csv)], cli_state)
     create.assert_called_once_with(csv)
     out = capsys.readouterr().out
-    assert "Creating template CSV" in out
+    assert "Creating template Excel file" in out
 
 
 def test_cmd_bulk_check_all_done(tmp_path, monkeypatch, cli_state, capsys):
     csv = tmp_path / "bulk.csv"
     csv.touch()
     loader = MagicMock(return_value=[])
-    monkeypatch.setattr(bulk_cmd, "_load_bulk_check_csv", loader)
+    monkeypatch.setattr(bulk_cmd, "_load_bulk_check_xlsx", loader)
     bulk_cmd.cmd_bulk_check([str(csv)], cli_state)
     loader.assert_called_once_with(csv)
     assert "already been processed" in capsys.readouterr().out
