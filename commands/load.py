@@ -11,46 +11,6 @@ from commands.common import print_help_for_command
 from utils.cache import _update_cache_file_state
 
 
-def _bulk_load_url(state, domain_name, row_num):
-    """Load URL for bulk processing (simplified version of cmd_load)."""
-    domain = next(
-        (d for d in DOMAINS if d.get("full_name", "").lower() == domain_name.lower()),
-        None,
-    )
-
-    if not domain:
-        debug_print(f"Domain '{domain_name}' not found")
-        return False
-
-    df_header_row = domain.get("worksheet_header_row", 4) if domain else 4
-    df_header_row = df_header_row + 2
-
-    try:
-        df = state.excel_data.parse(
-            sheet_name=domain.get("full_name"),
-            header=domain.get("worksheet_header_row", 4),
-        )
-        url = get_existing_url(df, row_num - df_header_row)
-        proposed = get_proposed_url(df, row_num - df_header_row)
-
-        if not url:
-            debug_print(f"Could not find URL for {domain_name} row {row_num}")
-            return False
-
-        state.set_variable("URL", url)
-        state.set_variable("PROPOSED_PATH", proposed)
-        state.set_variable("DOMAIN", domain.get("full_name", "Domain Placeholder"))
-        state.set_variable("ROW", str(row_num))
-
-        _update_cache_file_state(state, url=url, domain=domain.get("full_name"), row=str(row_num))
-
-        return True
-
-    except Exception as e:
-        debug_print(f"Error loading from spreadsheet: {e}")
-        return False
-
-
 def cmd_load(args, state):
     """Handle the 'load' command for loading URLs from spreadsheet."""
     if not args or len(args) < 2:
@@ -107,7 +67,9 @@ def cmd_load(args, state):
         state.set_variable("DOMAIN", domain.get("full_name", "Domain Placeholder"))
         state.set_variable("ROW", str(row_num))
 
-        _update_cache_file_state(state, url=url, domain=domain.get("full_name"), row=str(row_num))
+        _update_cache_file_state(
+            state, url=url, domain=domain.get("full_name"), row=str(row_num)
+        )
 
         warn = count_http(url) > 1
         print(f"✅ Loaded URL: {url[:60]}{'...' if len(url) > 60 else ''}")
@@ -117,4 +79,3 @@ def cmd_load(args, state):
     except Exception as e:
         print(f"❌ Error loading from spreadsheet: {e}")
         debug_print(f"Full error: {e}")
-

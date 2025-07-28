@@ -346,14 +346,18 @@ def _generate_report(state, prompt_open=True, force_regenerate=False):
     filename = f"./reports/{clean_domain}_{row}.html"
 
     report_path = Path(filename)
+
     if report_path.exists() and not force_regenerate:
         cache_file = state.get_variable("CACHE_FILE")
+
         if cache_file:
             try:
                 report_mtime = report_path.stat().st_mtime
                 cache_path = Path(cache_file)
+
                 if cache_path.exists():
                     cache_mtime = cache_path.stat().st_mtime
+                    
                     if report_mtime >= cache_mtime:
                         print(f"📋 Report already exists and is up-to-date: {filename}")
                         if prompt_open:

@@ -1,8 +1,13 @@
-import csv
-from utils.cache import _cache_page_data
+import pandas as pd
+from constants import DOMAINS
+from utils.cache import _cache_page_data, _update_cache_file_state
 from commands.common import print_help_for_command
-from commands.load import _bulk_load_url
-from data.dsm import get_latest_dsm_file, load_spreadsheet
+from data.dsm import (
+    get_existing_url,
+    get_latest_dsm_file,
+    get_proposed_url,
+    load_spreadsheet,
+)
 from utils.scraping import retrieve_page_data
 from utils.core import debug_print
 
@@ -37,97 +42,81 @@ def _calculate_difficulty_percentage(links_data):
     return difficulty
 
 
-def _create_bulk_check_template(csv_path):
-    """Create a template CSV file for bulk checking."""
-    with open(csv_path, "w", newline="", encoding="utf-8") as f:
-        writer = csv.writer(f)
-        writer.writerow(
-            [
-                "kanban_id",
-                "title",
-                "domain",
-                "row",
-                "existing_url",
-                "no_links",
-                "no_pdfs",
-                "no_embeds",
-                "% difficulty",
-            ]
-        )
-        # Add a few example rows with comments
-        writer.writerow(
-            [
-                "# Kanban card ID",
-                "# Page title here",
-                "# Fill in domain and row, leave other columns empty",
-                "",
-                "",
-                "",
-                "",
-                "",
-                "",
-            ]
-        )
-        writer.writerow(
-            [
-                "# Example: abc123def456",
-                "# Example: Department of Surgery",
-                "# Example: medicine.musc.edu",
-                "42",
-                "",
-                "",
-                "",
-                "",
-                "",
-            ]
-        )
+def _create_bulk_check_template(xlsx_path):
+    """Create a template Excel file for bulk checking."""
+    data = {
+        "kanban_id": ["# Kanban card ID", "# Example: abc123def456"],
+        "title": ["# Page title here", "# Example: Department of Surgery"],
+        "domain": [
+            "# Fill in domain and row, leave other columns empty",
+            "# Example: medicine.musc.edu",
+        ],
+        "row": ["", 42],
+        "existing_url": ["", ""],
+        "no_links": ["", ""],
+        "no_pdfs": ["", ""],
+        "no_embeds": ["", ""],
+        "% difficulty": ["", ""],
+    }
+
+    df = pd.DataFrame(data)
+    df.to_excel(xlsx_path, index=False, engine="openpyxl")
 
 
-def _load_bulk_check_csv(csv_path):
-    """Load CSV file and return rows that need processing."""
+def _load_bulk_check_xlsx(xlsx_path):
+    """Load Excel file and return rows that need processing."""
     rows_to_process = []
 
-    with open(csv_path, "r", encoding="utf-8") as f:
-        reader = csv.DictReader(f)
+    # Read the Excel file
+    df = pd.read_excel(xlsx_path, engine="openpyxl")
 
-        for row in reader:
-            # Skip comment rows and empty rows
-            debug_print(f"Processing row: {row}")
-            debug_print(f"Row domain: {row['domain']}")
-            if row["domain"].startswith("#") or not row["domain"].strip():
-                continue
+    for index, row in df.iterrows():
+        # Skip comment rows and empty rows
+        debug_print(f"Processing row: {row.to_dict()}")
+        domain_val = str(row.get("domain", "")).strip()
+        debug_print(f"Row domain: {domain_val}")
 
-            # Skip rows that already have data (all count fields are filled)
-            if (
-                row.get("no_links", "")
-                and row.get("no_pdfs", "")
-                and row.get("no_embeds", "")
-                and row.get("% difficulty", "")
-            ):
-                continue
+        if domain_val.startswith("#") or not domain_val:
+            continue
 
-            # Validate required fields
-            if not row.get("domain", "") or not row.get("row", ""):
-                continue
+        # Skip rows that already have data (all count fields are filled)
+        if (
+            pd.notna(row.get("no_links", ""))
+            and str(row.get("no_links", "")).strip()
+            and pd.notna(row.get("no_pdfs", ""))
+            and str(row.get("no_pdfs", "")).strip()
+            and pd.notna(row.get("no_embeds", ""))
+            and str(row.get("no_embeds", "")).strip()
+            and pd.notna(row.get("% difficulty", ""))
+            and str(row.get("% difficulty", "")).strip()
+        ):
+            continue
 
-            try:
-                row_num = int(row["row"])
-                rows_to_process.append(
-                    {
-                        "kanban_id": row.get("kanban_id", "").lstrip("'"),
-                        "title": row.get("title", "").strip(),
-                        "domain": row["domain"].strip(),
-                        "row": row_num,
-                    }
-                )
-            except ValueError:
-                continue
+        # Validate required fields
+        row_val = row.get("row", "")
+        if not domain_val or pd.isna(row_val) or str(row_val).strip() == "":
+            continue
+
+        try:
+            row_num = int(
+                float(str(row_val))
+            )  # Handle potential float values from Excel
+            rows_to_process.append(
+                {
+                    "kanban_id": str(row.get("kanban_id", "")).lstrip("'").strip(),
+                    "title": str(row.get("title", "")).strip(),
+                    "domain": domain_val,
+                    "row": row_num,
+                }
+            )
+        except (ValueError, TypeError):
+            continue
 
     return rows_to_process
 
 
-def _update_bulk_check_csv(
-    csv_path,
+def _update_bulk_check_xlsx(
+    xlsx_path,
     domain_name,
     row_num,
     url,
@@ -136,63 +125,100 @@ def _update_bulk_check_csv(
     embeds_count,
     difficulty_pct,
 ):
-    """Update the CSV file with the results for a specific row."""
-    # Read all rows
-    rows = []
-    with open(csv_path, "r", encoding="utf-8") as f:
-        reader = csv.DictReader(f)
-        fieldnames = reader.fieldnames
-        for row in reader:
-            rows.append(row)
+    """Update the Excel file with the results for a specific row."""
+    # Read the Excel file
+    df = pd.read_excel(xlsx_path, engine="openpyxl")
 
     # Find and update the matching row
-    for row in rows:
-        if row["domain"].strip().lower() == domain_name.lower() and row[
-            "row"
-        ].strip() == str(row_num):
-            row["existing_url"] = url
-            row["no_links"] = str(links_count)
-            row["no_pdfs"] = str(pdfs_count)
-            row["no_embeds"] = str(embeds_count)
-            row["% difficulty"] = str(difficulty_pct)
+    for index, row in df.iterrows():
+        domain_val = str(row.get("domain", "")).strip()
+        row_val = row.get("row", "")
+
+        if domain_val.lower() == domain_name.lower() and str(row_val).strip() == str(
+            row_num
+        ):
+            df.at[index, "existing_url"] = url
+            df.at[index, "no_links"] = links_count
+            df.at[index, "no_pdfs"] = pdfs_count
+            df.at[index, "no_embeds"] = embeds_count
+            df.at[index, "% difficulty"] = difficulty_pct
             break
 
-    # Write back to file
-    with open(csv_path, "w", newline="", encoding="utf-8") as f:
-        writer = csv.DictWriter(f, fieldnames=fieldnames)
-        writer.writeheader()
-        writer.writerows(rows)
+    # Write back to Excel file
+    df.to_excel(xlsx_path, index=False, engine="openpyxl")
+
+
+def _bulk_load_url(state, domain_name, row_num):
+    """Load URL for bulk processing (simplified version of cmd_load)."""
+    domain = next(
+        (d for d in DOMAINS if d.get("full_name", "").lower() == domain_name.lower()),
+        None,
+    )
+
+    if not domain:
+        debug_print(f"Domain '{domain_name}' not found")
+        return False
+
+    df_header_row = domain.get("worksheet_header_row", 4) if domain else 4
+    df_header_row = df_header_row + 2
+
+    try:
+        df = state.excel_data.parse(
+            sheet_name=domain.get("full_name"),
+            header=domain.get("worksheet_header_row", 4),
+        )
+        url = get_existing_url(df, row_num - df_header_row)
+        proposed = get_proposed_url(df, row_num - df_header_row)
+
+        if not url:
+            debug_print(f"Could not find URL for {domain_name} row {row_num}")
+            return False
+
+        state.set_variable("URL", url)
+        state.set_variable("PROPOSED_PATH", proposed)
+        state.set_variable("DOMAIN", domain.get("full_name", "Domain Placeholder"))
+        state.set_variable("ROW", str(row_num))
+
+        _update_cache_file_state(
+            state, url=url, domain=domain.get("full_name"), row=str(row_num)
+        )
+
+        return True
+
+    except Exception as e:
+        debug_print(f"Error loading from spreadsheet: {e}")
+        return False
 
 
 def cmd_bulk_check(args, state):
-    """Process multiple pages from a CSV file and update with link counts."""
+    """Process multiple pages from an Excel file and update with link counts."""
 
-    # Default CSV filename
-    csv_filename = "bulk_check_progress.csv"
+    # Default Excel filename
+    xlsx_filename = "bulk_check_progress.xlsx"
 
     # Handle command arguments
     if args:
         if args[0] in ["-h", "--help", "help"]:
             return print_help_for_command("bulk_check", state)
         else:
-            csv_filename = args[0]
+            xlsx_filename = args[0]
 
-    csv_path = Path(csv_filename)
+    xlsx_path = Path(xlsx_filename)
 
-    # Check if CSV exists, create template if not
-    if not csv_path.exists():
-        print(f"📝 Creating template CSV file: {csv_filename}")
-        _create_bulk_check_template(csv_path)
+    # Check if Excel file exists, create template if not
+    if not xlsx_path.exists():
+        print(f"📝 Creating template Excel file: {xlsx_filename}")
+        _create_bulk_check_template(xlsx_path)
         print(
             f"✅ Template created. Please fill in domain and row values, then run the command again."
         )
         return
 
-    # Load CSV and process unscanned rows
+    # Load Excel file and process unscanned rows
     try:
-        rows_to_process = _load_bulk_check_csv(csv_path)
+        rows_to_process = _load_bulk_check_xlsx(xlsx_path)
         if not rows_to_process:
-            print("✅ All rows in the CSV have already been processed!")
+            print("✅ All rows in the Excel file have already been processed!")
             return
 
         print(f"📊 Found {len(rows_to_process)} rows to process")
@@ -217,7 +243,7 @@ def cmd_bulk_check(args, state):
             kanban_id = row_data.get("kanban_id", "")
 
             print(
-                f"\n🔄 Processing {i}/{len(rows_to_process)}: {domain_name} row {row_num}"
+                f"\n🔄 Processing {i}/{len(rows_to_process)}: {domain_name} row {row_num}, kanban_id: {kanban_id}"
             )
 
             # Load the URL using existing load functionality
@@ -267,9 +293,9 @@ def cmd_bulk_check(args, state):
                     f"  📊 Found: {links_count} links, {pdfs_count} PDFs, {embeds_count} embeds, {difficulty_pct:.1%} difficulty"
                 )
 
-                # Update CSV with results
-                _update_bulk_check_csv(
-                    csv_path,
+                # Update Excel file with results
+                _update_bulk_check_xlsx(
+                    xlsx_path,
                     domain_name,
                     row_num,
                     url,
@@ -288,8 +314,8 @@ def cmd_bulk_check(args, state):
         print(
             f"\n✅ Bulk check complete! Processed {processed_count}/{len(rows_to_process)} rows"
         )
-        print(f"📋 Results saved to: {csv_filename}")
+        print(f"📋 Results saved to: {xlsx_filename}")
 
     except Exception as e:
-        print(f"❌ Error processing CSV file: {e}")
+        print(f"❌ Error processing Excel file: {e}")
         debug_print(f"Full error: {e}")

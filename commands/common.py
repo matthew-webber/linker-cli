@@ -33,7 +33,7 @@ def print_help_for_command(command, state):
                 "The CSV should have columns: title, domain, row, existing_url, no_links, no_pdfs, no_embeds, % difficulty"
             )
             print()
-            print("If no filename is provided, uses 'bulk_check_progress.csv'")
+            print("If no filename is provided, uses 'bulk_check_progress.xlsx'")
             print(
                 "Only processes rows where no_links, no_pdfs, no_embeds, and % difficulty are empty."
             )
