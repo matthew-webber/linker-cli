@@ -176,7 +176,7 @@ def test_cmd_load_success(monkeypatch, cli_state, capsys):
     cli_state.excel_data.parse.return_value = "df"
     monkeypatch.setattr(load_cmd, "get_existing_url", lambda df, row: "http://page")
     monkeypatch.setattr(load_cmd, "get_proposed_url", lambda df, row: "/new")
-    monkeypatch.setattr(load_cmd, "_update_cache_file_state", MagicMock())
+    monkeypatch.setattr(load_cmd, "_update_state_from_cache", MagicMock())
     monkeypatch.setattr(load_cmd, "count_http", lambda url: 0)
     load_cmd.cmd_load(["Enterprise", "5"], cli_state)
     assert cli_state.get_variable("URL") == "http://page"
@@ -206,7 +206,7 @@ def test_cmd_report_multiple_rows(monkeypatch, cli_state):
 def test_cmd_set_url(monkeypatch, mock_state, capsys):
     mock_state.set_variable.return_value = True
     updater = MagicMock()
-    monkeypatch.setattr(commands, "_update_cache_file_state", updater)
+    monkeypatch.setattr(commands, "_update_state_from_cache", updater)
     commands.cmd_set(["URL", "http://example.com"], mock_state)
     mock_state.set_variable.assert_called_once_with("URL", "http://example.com")
     updater.assert_called_once_with(mock_state, url="http://example.com")

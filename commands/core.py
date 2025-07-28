@@ -19,7 +19,7 @@ from utils.core import display_page_data
 from constants import DOMAINS
 from commands.common import print_help_for_command, display_domains
 from utils.cache import (
-    _update_cache_file_state,
+    _update_state_from_cache,
 )
 
 
@@ -143,11 +143,11 @@ def cmd_set(args, state):
 
         # Update cache file state when URL is set
         elif var_name == "URL" and value:
-            _update_cache_file_state(state, url=value)
+            _update_state_from_cache(state, url=value)
 
         # Update cache file state when DOMAIN or ROW is set
         elif var_name in ["DOMAIN", "ROW"]:
-            _update_cache_file_state(state)
+            _update_state_from_cache(state)
 
     else:
         print(f"❌ Unknown variable: {var_name}")

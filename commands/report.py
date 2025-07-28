@@ -5,6 +5,7 @@ from pathlib import Path
 from io import StringIO
 from datetime import datetime
 
+from commands.common import print_help_for_command
 from utils.core import debug_print
 from commands.core import _open_file_in_default_app
 
@@ -357,7 +358,7 @@ def _generate_report(state, prompt_open=True, force_regenerate=False):
 
                 if cache_path.exists():
                     cache_mtime = cache_path.stat().st_mtime
-                    
+
                     if report_mtime >= cache_mtime:
                         print(f"📋 Report already exists and is up-to-date: {filename}")
                         if prompt_open:
@@ -433,14 +434,13 @@ def _generate_report(state, prompt_open=True, force_regenerate=False):
 
     return filename
 
+
 def prompt_to_open_report(report_path):
     open_report_now = (
-                                input(
-                                    "Do you want to open the existing report in your browser now? [Y/n]: "
-                                )
-                                .strip()
-                                .lower()
-                            )
+        input("Do you want to open the existing report in your browser now? [Y/n]: ")
+        .strip()
+        .lower()
+    )
     if open_report_now in ["", "y", "yes"]:
         try:
             _open_file_in_default_app(report_path)

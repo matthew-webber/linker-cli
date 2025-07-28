@@ -8,7 +8,7 @@ from data.dsm import (
 from constants import DOMAINS
 from utils.core import debug_print
 from commands.common import print_help_for_command
-from utils.cache import _update_cache_file_state
+from utils.cache import _update_state_from_cache
 
 
 def cmd_load(args, state):
@@ -69,7 +69,7 @@ def cmd_load(args, state):
         state.set_variable("DOMAIN", domain.get("full_name", "Domain Placeholder"))
         state.set_variable("ROW", str(row_num))
 
-        _update_cache_file_state(
+        _update_state_from_cache(
             state, url=url, domain=domain.get("full_name"), row=str(row_num)
         )
 

@@ -147,7 +147,38 @@ def _find_cache_file_for_url(url):
     return None
 
 
-def _update_cache_file_state(state, url=None, domain=None, row=None):
+def _update_state_from_cache(state, url=None, domain=None, row=None):
+    """
+    Updates the state object with data from a cache file based on the provided
+    URL, domain, or row. If a matching cache file is found, it loads metadata
+    and page data into the state. If no matching cache file is found, it resets
+    the relevant state variables.
+
+    Args:
+        state (object): The state object that holds variables and current page data.
+        url (str, optional): The URL to search for a matching cache file. Defaults to None.
+        domain (str, optional): The domain to search for a matching cache file. Defaults to None.
+        row (str, optional): The row to search for a matching cache file. Defaults to None.
+
+    Behavior:
+        - Searches for a cache file based on the provided domain and row, or URL.
+        - If a matching cache file is found:
+            - Updates the `CACHE_FILE` variable in the state.
+            - Loads metadata and page data from the cache file into the state.
+            - Updates additional state variables (e.g., `KANBAN_ID`, `URL`, `DOMAIN`, etc.)
+              based on the metadata.
+        - If no matching cache file is found:
+            - Resets the `CACHE_FILE` variable and clears the current page data in the state.
+        - Logs debug messages and prints information about the cache loading process.
+
+    Raises:
+        Exception: If an error occurs while loading cached page data from the file.
+
+    Note:
+        This function relies on helper functions `_find_cache_file_for_domain_row`,
+        `_find_cache_file_for_url`, and `_load_cached_page_data` to perform its operations.
+    """
+
     current_cache_file = state.get_variable("CACHE_FILE")
     search_url = url or state.get_variable("URL")
     search_domain = domain or state.get_variable("DOMAIN")

@@ -1,6 +1,6 @@
 import pandas as pd
 from constants import DOMAINS
-from utils.cache import _cache_page_data, _update_cache_file_state
+from utils.cache import _cache_page_data, _update_state_from_cache
 from commands.common import print_help_for_command
 from data.dsm import (
     get_existing_url,
@@ -149,7 +149,31 @@ def _update_bulk_check_xlsx(
 
 
 def _bulk_load_url(state, domain_name, row_num):
-    """Load URL for bulk processing (simplified version of cmd_load)."""
+    """
+    Loads URL and related information from an Excel spreadsheet for a given domain and row number.
+
+    This function retrieves data from an Excel sheet based on the provided domain name and row number.
+    It sets various state variables, including the URL, proposed path, domain name, and row number.
+    If the domain or URL cannot be found, or if an error occurs during processing, the function
+    returns `False`.
+
+    Args:
+        state (object): The state object containing the Excel data and methods to set variables.
+        domain_name (str): The name of the domain to search for in the spreadsheet.
+        row_num (int): The row number in the spreadsheet to retrieve data from.
+
+    Returns:
+        bool: `True` if the URL and related data were successfully loaded and state variables were set,
+              `False` otherwise.
+
+    Notes:
+        - The function assumes the presence of a global `DOMAINS` list, where each domain is a dictionary
+          containing metadata such as `full_name` and `worksheet_header_row`.
+        - The `state.excel_data.parse` method is used to parse the Excel sheet.
+        - The `get_existing_url` and `get_proposed_url` functions are used to extract URL data from the
+          spreadsheet.
+    """
+
     domain = next(
         (d for d in DOMAINS if d.get("full_name", "").lower() == domain_name.lower()),
         None,
@@ -179,7 +203,7 @@ def _bulk_load_url(state, domain_name, row_num):
         state.set_variable("DOMAIN", domain.get("full_name", "Domain Placeholder"))
         state.set_variable("ROW", str(row_num))
 
-        _update_cache_file_state(
+        _update_state_from_cache(
             state, url=url, domain=domain.get("full_name"), row=str(row_num)
         )
 
@@ -255,7 +279,6 @@ def cmd_bulk_check(args, state):
 
                 # Set kanban_id in state for caching
                 state.set_variable("KANBAN_ID", kanban_id)
-
                 url = state.get_variable("URL")
                 selector = state.get_variable("SELECTOR")
 
@@ -264,7 +287,6 @@ def cmd_bulk_check(args, state):
                     state.set_variable("SELECTOR", "#main")
                     selector = "#main"
 
-                # Check if we have cached data first
                 if state.current_page_data:
                     print(f"  � Using cached data")
                     data = state.current_page_data
