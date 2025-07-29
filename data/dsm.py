@@ -170,19 +170,17 @@ def lookup_link_in_dsm(link_url, excel_data=None, state=None):
             # Hacky workaround for News Content domain
             # to handle different column names for the time being
             # TODO: add existing/proposed URL col values to the domain mapping
-            existing_url_col = None
-            proposed_url_col = None
+            existing_url_col_name = domain.get("existing_url_col_name", "EXISTING URL")
+            proposed_url_col_name = domain.get("proposed_url_col_name", "PROPOSED URL")
 
             # Search through all rows in this domain
             for idx in range(len(df)):
                 excel_row = idx
                 if domain["full_name"].lower() == "news content":
-                    existing_url_col = "Current URLs"
-                    proposed_url_col = "Path"
+                    existing_url_col_name = "Current URLs"
+                    proposed_url_col_name = "Path"
 
-                existing_url = get_existing_url(
-                    df, excel_row, existing_url_col or "EXISTING URL"
-                )
+                existing_url = get_existing_url(df, excel_row, existing_url_col_name)
 
                 if not existing_url:
                     continue
@@ -190,7 +188,7 @@ def lookup_link_in_dsm(link_url, excel_data=None, state=None):
                 # Use regex to check if the target URL exists anywhere in the cell
                 if re.search(url_pattern, existing_url, re.IGNORECASE):
                     proposed_url = get_proposed_url(
-                        df, excel_row, proposed_url_col or "PROPOSED URL"
+                        df, excel_row, proposed_url_col_name
                     )
                     debug_print(f"Found match! Proposed URL: {proposed_url}")
 
