@@ -90,6 +90,15 @@ DOMAINS = [
         "url": "pharmacy.musc.edu",
         "worksheet_header_row": 3,
     },
+    {
+        "full_name": "News Releases",
+        "worksheet_name": "News Releases",
+        "sitecore_domain_name": "Content Hub",
+        "url": "web.musc.edu/about/leadership/institutional-offices/communications/pamr/news-releases",
+        "worksheet_header_row": 0,
+        "existing_url_col_name": "Current URL",
+        "proposed_url_col_name": "proposed path",
+    },
 ]
 
 DOMAIN_MAPPING = {
