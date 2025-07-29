@@ -39,15 +39,45 @@ def _cache_page_data(state, url, data):
         "page_data": data,
     }
 
-    with open(cache_file, "w", encoding="utf-8") as f:
-        json.dump(cache_data, f, indent=2, ensure_ascii=False)
-
-    state.set_variable("CACHE_FILE", str(cache_file))
-    print(f"✅ Data cached to {cache_file}")
+    try:
+        with open(cache_file, "w", encoding="utf-8") as f:
+            json.dump(cache_data, f, indent=2, ensure_ascii=False)
+        state.set_variable("CACHE_FILE", str(cache_file))
+        print(f"✅ Data cached to {cache_file}")
+        debug_print(f"Cache metadata: {cache_data['metadata']}")
+    except Exception as e:
+        debug_print(f"Error caching data to {cache_file}: {e}")
+        raise
 
 
 def cache_page_data(state, url, data):
     return _cache_page_data(state, url, data)
+
+
+def _get_expected_metadata_structure():
+    """Get the current expected metadata structure for cache validation."""
+    return {
+        "url": None,
+        "domain": None,
+        "row": None,
+        "kanban_id": None,
+        "selector": None,
+        "include_sidebar": None,
+        "timestamp": None,
+        "cache_filename": None,
+    }
+
+
+def _is_metadata_structure_current(metadata):
+    """Check if the metadata structure matches current expectations."""
+    if not isinstance(metadata, dict):
+        return False
+
+    expected_keys = set(_get_expected_metadata_structure().keys())
+    actual_keys = set(metadata.keys())
+
+    # Check if all expected keys are present
+    return expected_keys.issubset(actual_keys)
 
 
 def _load_cached_page_data(cache_file_path):
@@ -75,6 +105,10 @@ def _is_cache_valid_for_context(state, cache_file):
         metadata, _ = _load_cached_page_data(cache_file)
         if not metadata:
             return False, "Cache file contains no metadata"
+
+        # Check if metadata structure is current
+        if not _is_metadata_structure_current(metadata):
+            return False, "Metadata structure is outdated"
 
         current_url = state.get_variable("URL")
         current_domain = state.get_variable("DOMAIN")

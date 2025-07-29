@@ -1,6 +1,10 @@
 import pandas as pd
 from constants import DOMAINS
-from utils.cache import _cache_page_data, _update_state_from_cache
+from utils.cache import (
+    _cache_page_data,
+    _update_state_from_cache,
+    _is_cache_valid_for_context,
+)
 from commands.common import print_help_for_command
 from data.dsm import (
     get_existing_url,
@@ -287,10 +291,22 @@ def cmd_bulk_check(args, state):
                     state.set_variable("SELECTOR", "#main")
                     selector = "#main"
 
+                # Check if we have cached data and if it's valid
+                use_cache = False
                 if state.current_page_data:
-                    print(f"  🗂️ Using cached data")
-                    data = state.current_page_data
-                else:
+                    cache_file = state.get_variable("CACHE_FILE")
+                    is_valid, reason = _is_cache_valid_for_context(state, cache_file)
+
+                    if is_valid:
+                        print(f"  🗂️ Using cached data")
+                        data = state.current_page_data
+                        use_cache = True
+                    else:
+                        print(f"  🔄 Cache invalid ({reason}), will regenerate")
+                        state.current_page_data = None
+                        state.set_variable("CACHE_FILE", "")
+
+                if not use_cache:
                     # Run the check
                     print(f"  🔍 Checking: {url}")
                     data = retrieve_page_data(url, selector, include_sidebar=False)
