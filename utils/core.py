@@ -4,6 +4,7 @@ Utility functions for Linker CLI.
 
 import requests
 from urllib.parse import urlparse
+import socket
 
 from constants import DOMAIN_MAPPING
 from utils.sitecore import format_hierarchy
@@ -41,10 +42,19 @@ def set_debug(enabled, state):
 
 
 def check_status_code(url):
+    # if the URL is has URI, skip
+    if not urlparse(url).scheme:
+        debug_print(f"Skipping status check for URL without scheme: {url}")
+        return "0"
     try:
-        response = requests.head(url, allow_redirects=True, timeout=10)
+        response = requests.head(url, allow_redirects=True, timeout=3)
+        debug_print(f"Checked URL: {url} - Status Code: {response.status_code}")
         return str(response.status_code)
-    except requests.RequestException:
+    except (requests.Timeout, requests.exceptions.ReadTimeout, socket.timeout) as e:
+        debug_print(f"⏳ Timeout checking URL {url}: {e}")
+        return "420"
+    except requests.RequestException as e:
+        debug_print(f"❌ Error checking URL {url}: {e}")
         return "0"
 
 
