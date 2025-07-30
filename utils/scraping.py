@@ -13,19 +13,46 @@ CACHE_DIR = Path("migration_cache")
 CACHE_DIR.mkdir(exist_ok=True)
 
 
-def extract_links_from_page(url, selector="#main"):
+def get_page_soup(url):
+    """
+    Common utility to fetch a page and return the BeautifulSoup object.
+
+    Args:
+        url (str): The URL to fetch
+
+    Returns:
+        tuple: (soup, response) - BeautifulSoup object and the response object
+
+    Raises:
+        requests.RequestException: If there's an error fetching the page
+    """
     debug_print(f"Fetching page: {url}")
-    debug_print(f"Using CSS selector: {selector}")
     try:
+        url = normalize_url(url)
+        debug_print(f"Normalized URL: {url}")
         response = requests.get(url, timeout=30)
+        debug_print(
+            f"HTTP GET request completed with status code: {response.status_code}"
+        )
         response.raise_for_status()
         soup = BeautifulSoup(response.text, "html.parser")
+        debug_print("HTML content successfully parsed with BeautifulSoup")
+        return soup, response
+    except requests.RequestException as e:
+        debug_print(f"Error fetching page: {e}")
+        raise
+
+
+def extract_links_from_page(url, selector="#main"):
+    debug_print(f"Using CSS selector: {selector}")
+    try:
+        soup, response = get_page_soup(url)
         container = soup.select_one(selector)
         if not container:
             print(
                 f"⚠️ Warning ⚠️: No element found matching selector '{selector}', falling back to entire page"
             )
-            # container = soup
+            container = soup
         anchors = container.find_all("a", href=True)
         debug_print(f"Found {len(anchors)} anchor tags")
         links = []
@@ -56,7 +83,7 @@ def extract_embeds_from_page(soup, selector="#main"):
         print(
             f"Warning: No element found matching selector '{selector}', falling back to entire page for embeds"
         )
-        # container = soup
+        container = soup
     for iframe in container.find_all("iframe", src=True):
         src = iframe.get("src", "")
         if "vimeo" in src.lower():
@@ -72,15 +99,7 @@ def retrieve_page_data(url, selector="#main", include_sidebar=False):
     debug_print(f"Retrieving page data for URL: {url}")
 
     try:
-        url = normalize_url(url)
-        debug_print(f"Normalized URL: {url}")
-        response = requests.get(url, timeout=30)
-        debug_print(
-            f"HTTP GET request completed with status code: {response.status_code}"
-        )
-        response.raise_for_status()
-        soup = BeautifulSoup(response.text, "html.parser")
-        debug_print("HTML content successfully parsed with BeautifulSoup")
+        soup, response = get_page_soup(url)
 
         # Extract main content
         debug_print(f"Extracting main content using selector: {selector}")
