@@ -130,26 +130,68 @@ def _update_bulk_check_xlsx(
     difficulty_pct,
 ):
     """Update the Excel file with the results for a specific row."""
-    # Read the Excel file
-    df = pd.read_excel(xlsx_path, engine="openpyxl")
+    try:
+        # Read the Excel file
+        df = pd.read_excel(xlsx_path, engine="openpyxl")
 
-    # Find and update the matching row
-    for index, row in df.iterrows():
-        domain_val = str(row.get("domain", "")).strip()
-        row_val = row.get("row", "")
+        # Ensure required columns exist
+        required_columns = [
+            "existing_url",
+            "no_links",
+            "no_pdfs",
+            "no_embeds",
+            "% difficulty",
+        ]
+        for col in required_columns:
+            if col not in df.columns:
+                df[col] = ""  # Add missing column with empty values
 
-        if domain_val.lower() == domain_name.lower() and str(row_val).strip() == str(
-            row_num
-        ):
-            df.at[index, "existing_url"] = url
-            df.at[index, "no_links"] = links_count
-            df.at[index, "no_pdfs"] = pdfs_count
-            df.at[index, "no_embeds"] = embeds_count
-            df.at[index, "% difficulty"] = difficulty_pct
-            break
+        # Find and update the matching row
+        row_found = False
+        for index, row in df.iterrows():
+            domain_val = str(row.get("domain", "")).strip()
+            row_val = row.get("row", "")
 
-    # Write back to Excel file
-    df.to_excel(xlsx_path, index=False, engine="openpyxl")
+            # DEBUG: Print the actual types to help diagnose
+            debug_print(
+                f"Row value type: {type(row_val)}, Domain value type: {type(domain_val)}"
+            )
+
+            # Convert both to strings and strip, then normalize numeric values by removing decimal point
+            row_val_str = str(row_val).strip()
+            if row_val_str.endswith(".0"):
+                row_val_str = row_val_str[:-2]  # Remove the ".0" suffix
+
+            row_num_str = str(row_num).strip()
+
+            # Debug the values to help troubleshooting
+            debug_print(
+                f"Comparing: '{domain_val}' == '{domain_name}' and '{row_val_str}' == '{row_num_str}'"
+            )
+
+            if domain_val.lower() == domain_name.lower() and row_val_str == row_num_str:
+                debug_print(f"Match found at index {index}")
+                df.at[index, "existing_url"] = url
+                df.at[index, "no_links"] = links_count
+                df.at[index, "no_pdfs"] = pdfs_count
+                df.at[index, "no_embeds"] = embeds_count
+                df.at[index, "% difficulty"] = difficulty_pct
+                row_found = True
+                break
+
+        if not row_found:
+            debug_print(
+                f"Warning: No matching row found for {domain_name} row {row_num}"
+            )
+            return False
+
+        # Write back to Excel file
+        df.to_excel(xlsx_path, index=False, engine="openpyxl")
+        return True
+
+    except Exception as e:
+        debug_print(f"Error updating Excel file {xlsx_path}: {e}")
+        return False
 
 
 def _bulk_load_url(state, domain_name, row_num):
@@ -337,7 +379,7 @@ def cmd_bulk_check(args, state):
                 )
 
                 # Update Excel file with results
-                _update_bulk_check_xlsx(
+                update_success = _update_bulk_check_xlsx(
                     xlsx_path,
                     domain_name,
                     row_num,
@@ -347,7 +389,12 @@ def cmd_bulk_check(args, state):
                     embeds_count,
                     difficulty_pct,
                 )
-                processed_count += 1
+                if update_success:
+                    processed_count += 1
+                else:
+                    print(
+                        f"  ⚠️ Failed to update Excel file for {domain_name} row {row_num}"
+                    )
 
             except Exception as e:
                 print(f"❌ Error processing {domain_name} row {row_num}: {e}")
