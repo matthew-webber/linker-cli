@@ -101,6 +101,16 @@ DOMAINS = [
         "existing_url_col_name": "Current URL",
         "proposed_url_col_name": "proposed path",
     },
+    {
+        "full_name": "Progress Notes",
+        "worksheet_name": "ProgressNotes",
+        "sitecore_domain_name": "Content Hub",
+        "aliases": ["ProgressNotes"],  # alternative full_name values
+        "url": "muschealth.org/health-professionals/progressnotes",
+        "worksheet_header_row": 0,
+        "existing_url_col_name": "Current URL",
+        "proposed_url_col_name": "proposed path",
+    },
 ]
 
 DOMAIN_MAPPING = {
