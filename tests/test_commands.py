@@ -174,8 +174,12 @@ def test_cmd_links(monkeypatch, cli_state):
 def test_cmd_load_success(monkeypatch, cli_state, capsys):
     cli_state.excel_data = MagicMock()
     cli_state.excel_data.parse.return_value = "df"
-    monkeypatch.setattr(load_cmd, "get_existing_url", lambda df, row: "http://page")
-    monkeypatch.setattr(load_cmd, "get_proposed_url", lambda df, row: "/new")
+    monkeypatch.setattr(
+        load_cmd,
+        "get_existing_url",
+        lambda df, row, col_name: "http://page",
+    )
+    monkeypatch.setattr(load_cmd, "get_proposed_url", lambda df, row, col_name: "/new")
     monkeypatch.setattr(load_cmd, "_update_state_from_cache", MagicMock())
     monkeypatch.setattr(load_cmd, "count_http", lambda url: 0)
     load_cmd.cmd_load(["Enterprise", "5"], cli_state)
