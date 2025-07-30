@@ -179,7 +179,12 @@ def _bulk_load_url(state, domain_name, row_num):
     """
 
     domain = next(
-        (d for d in DOMAINS if d.get("full_name", "").lower() == domain_name.lower()),
+        (
+            d
+            for d in DOMAINS
+            if d.get("full_name", "").lower() == domain_name.lower()
+            or domain_name.lower() in [alias.lower() for alias in d.get("aliases", [])]
+        ),
         None,
     )
 

@@ -30,6 +30,7 @@ DOMAINS = [
     {
         "full_name": "Hollings Cancer",
         "worksheet_name": "Hollings Cancer",
+        "aliases": ["Hollings Cancer Center", "HCC"],  # alternative full_name values
         "sitecore_domain_name": "Hollings",
         "url": "hollingscancercenter.musc.edu",
         "worksheet_header_row": 3,
@@ -37,6 +38,7 @@ DOMAINS = [
     {
         "full_name": "Childrens Health",
         "worksheet_name": "Childrens Health",
+        "aliases": ["Children's Health", "Kids"],  # alternative full_name values
         "sitecore_domain_name": "Kids",
         "url": "musckids.org",
         "worksheet_header_row": 3,
