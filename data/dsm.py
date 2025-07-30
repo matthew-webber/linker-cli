@@ -83,12 +83,12 @@ def get_column_value(sheet_df, excel_row, column_name):
         return ""
 
 
-def get_existing_url(sheet_df, excel_row, existing_url_col_name="EXISTING URL"):
-    return get_column_value(sheet_df, excel_row, existing_url_col_name)
+def get_existing_url(sheet_df, excel_row, col_name="EXISTING URL"):
+    return get_column_value(sheet_df, excel_row, col_name)
 
 
-def get_proposed_url(sheet_df, excel_row, proposed_url_col_name="PROPOSED URL"):
-    return get_column_value(sheet_df, excel_row, proposed_url_col_name)
+def get_proposed_url(sheet_df, excel_row, col_name="PROPOSED URL"):
+    return get_column_value(sheet_df, excel_row, col_name)
 
 
 def get_row_data(sheet_df, excel_row, columns=None):
@@ -167,9 +167,6 @@ def lookup_link_in_dsm(link_url, excel_data=None, state=None):
                 header=domain.get("worksheet_header_row", 4),
             )
 
-            # Hacky workaround for News Content domain
-            # to handle different column names for the time being
-            # TODO: add existing/proposed URL col values to the domain mapping
             existing_url_col_name = domain.get("existing_url_col_name", "EXISTING URL")
             proposed_url_col_name = domain.get("proposed_url_col_name", "PROPOSED URL")
 
