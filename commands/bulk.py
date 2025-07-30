@@ -194,6 +194,8 @@ def _update_bulk_check_xlsx(
         return False
 
 
+# TODO - this does basically the same thing as cmd_load, but for bulk check
+# Consider refactoring to avoid duplication
 def _bulk_load_url(state, domain_name, row_num):
     """
     Loads URL and related information from an Excel spreadsheet for a given domain and row number.
@@ -236,14 +238,24 @@ def _bulk_load_url(state, domain_name, row_num):
 
     df_header_row = domain.get("worksheet_header_row", 4) if domain else 4
     df_header_row = df_header_row + 2
-
+    existing_url_header = domain.get("existing_url_col_name", "EXISTING URL")
+    proposed_url_header = domain.get("proposed_url_col_name", "PROPOSED URL")
     try:
         df = state.excel_data.parse(
-            sheet_name=domain.get("full_name"),
+            sheet_name=domain.get("worksheet_name"),
             header=domain.get("worksheet_header_row", 4),
         )
-        url = get_existing_url(df, row_num - df_header_row)
-        proposed = get_proposed_url(df, row_num - df_header_row)
+
+        url = get_existing_url(
+            df,
+            row_num - df_header_row,
+            col_name=existing_url_header,
+        )
+        proposed = get_proposed_url(
+            df,
+            row_num - df_header_row,
+            col_name=proposed_url_header,
+        )
 
         if not url:
             debug_print(f"Could not find URL for {domain_name} row {row_num}")
