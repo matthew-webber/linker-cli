@@ -36,11 +36,6 @@ def cmd_load(args, state):
         None,
     )
 
-    df_header_row = domain.get("worksheet_header_row", 4) if domain else 4
-    df_header_row = df_header_row + 2
-    existing_url_header = domain.get("existing_url_col_name", "EXISTING URL")
-    proposed_url_header = domain.get("proposed_url_col_name", "PROPOSED URL")
-
     try:
         row_num = int(row_arg)
     except ValueError:
@@ -53,6 +48,11 @@ def cmd_load(args, state):
         for i, domain in enumerate([d.get("full_name") for d in DOMAINS], 1):
             print(f"  {i:2}. {domain}")
         return
+
+    df_header_row = domain.get("worksheet_header_row", 4) if domain else 4
+    df_header_row = df_header_row + 2
+    existing_url_header = domain.get("existing_url_col_name", "EXISTING URL")
+    proposed_url_header = domain.get("proposed_url_col_name", "PROPOSED URL")
 
     try:
         df = state.excel_data.parse(

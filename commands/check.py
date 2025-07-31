@@ -53,7 +53,7 @@ def cmd_check(args, state):
     if include_sidebar:
         print("🔲 Including sidebar content")
 
-    print("🔄 state.current_page_data", state.current_page_data)
+    debug_print("🔄 state.current_page_data", state.current_page_data)
 
     # Check if we have cached data that matches the current context
     if state.current_page_data:
