@@ -89,7 +89,28 @@ def _generate_consolidated_section(state):
         <div class="source-info">
             <h3>📍 Source Information</h3>
             <p><strong>URL:</strong> <a href="{url}" onclick="window.open(this.href, '_blank', 'noopener,noreferrer,width=1200,height=1200'); return false;">{url}</a></p>
-            <p><strong>DSM Location:</strong> {domain} {row}</p>
+            <p><strong>DSM Location:</strong> {domain} {row}</p>"""
+
+    # Add meta description if available
+    meta_description = state.current_page_data.get("meta_description", "")
+    if meta_description:
+        # Escape HTML characters and truncate if too long
+        from html import escape
+
+        escaped_meta = escape(meta_description)
+        if len(escaped_meta) > 200:
+            escaped_meta = escaped_meta[:200] + "..."
+
+        html += f"""
+            <p><strong>Meta Description:</strong> 
+                <button onclick="copyMetaDescription()" class="copy-btn" title="Copy meta description">📋</button>
+                <span id="meta-desc-text">{escaped_meta}</span>
+            </p>"""
+    else:
+        html += """
+            <p><strong>Meta Description:</strong> <em>Not available</em></p>"""
+
+    html += """
         </div>
 
         <div class="hierarchy-info">

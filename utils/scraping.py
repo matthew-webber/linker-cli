@@ -43,6 +43,24 @@ def get_page_soup(url):
         raise
 
 
+def extract_meta_description(soup):
+    """
+    Extract the meta description from a BeautifulSoup object.
+
+    Args:
+        soup (BeautifulSoup): The BeautifulSoup object of the page
+
+    Returns:
+        str: The content of the meta description tag, or an empty string if not found
+    """
+    meta_desc = soup.find("meta", attrs={"name": "description"})
+    if meta_desc and "content" in meta_desc.attrs:
+        debug_print(f"Meta description found: {meta_desc['content']}")
+        return meta_desc["content"]
+    debug_print("No meta description found")
+    return ""
+
+
 def extract_links_from_page(url, selector="#main"):
     debug_print(f"Using CSS selector: {selector}")
     try:
@@ -95,6 +113,7 @@ def extract_embeds_from_page(soup, selector="#main"):
     return embeds
 
 
+# TODO - refactor this to pass the soup and response objects instead of fetching again in the extract_* functions
 def retrieve_page_data(url, selector="#main", include_sidebar=False):
     debug_print(f"Retrieving page data for URL: {url}")
 
@@ -126,6 +145,9 @@ def retrieve_page_data(url, selector="#main", include_sidebar=False):
             except Exception as e:
                 debug_print(f"Warning: Error extracting sidebar content: {e}")
 
+        meta_description = extract_meta_description(soup)
+        debug_print(f"Meta description extracted: {meta_description}")
+
         data = {
             "links": main_links,
             "pdfs": main_pdfs,
@@ -133,6 +155,7 @@ def retrieve_page_data(url, selector="#main", include_sidebar=False):
             "sidebar_links": sidebar_links,
             "sidebar_pdfs": sidebar_pdfs,
             "sidebar_embeds": sidebar_embeds,
+            "meta_description": meta_description,
         }
 
         total_main = len(main_links) + len(main_pdfs) + len(main_embeds)
@@ -156,6 +179,7 @@ def retrieve_page_data(url, selector="#main", include_sidebar=False):
             "sidebar_links": [],
             "sidebar_pdfs": [],
             "sidebar_embeds": [],
+            "meta_description": "",
             "error": str(e),
             "selector_used": selector,
             "include_sidebar": include_sidebar,

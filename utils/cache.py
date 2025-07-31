@@ -102,13 +102,17 @@ def _is_cache_valid_for_context(state, cache_file):
     if not cache_file:
         return False, "No cache file specified"
     try:
-        metadata, _ = _load_cached_page_data(cache_file)
+        metadata, page_data = _load_cached_page_data(cache_file)
         if not metadata:
             return False, "Cache file contains no metadata"
 
         # Check if metadata structure is current
         if not _is_metadata_structure_current(metadata):
             return False, "Metadata structure is outdated"
+
+        # Check if page_data contains meta_description
+        if not page_data or "meta_description" not in page_data:
+            return False, "Cache missing meta description data"
 
         current_url = state.get_variable("URL")
         current_domain = state.get_variable("DOMAIN")

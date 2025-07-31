@@ -358,7 +358,7 @@ def cmd_bulk_check(args, state):
 
                     if is_valid:
                         print(f"  🗂️ Using cached data")
-                        data = state.current_page_data
+                        page_data = state.current_page_data
                         use_cache = True
                     else:
                         print(f"  🔄 Cache invalid ({reason}), will regenerate")
@@ -368,23 +368,23 @@ def cmd_bulk_check(args, state):
                 if not use_cache:
                     # Run the check
                     print(f"  🔍 Checking: {url}")
-                    data = retrieve_page_data(url, selector, include_sidebar=False)
+                    page_data = retrieve_page_data(url, selector, include_sidebar=False)
 
-                    if "error" in data:
-                        print(f"  ❌ Error extracting data: {data['error']}")
+                    if "error" in page_data:
+                        print(f"  ❌ Error extracting data: {page_data['error']}")
                         continue
 
                     # Cache the data
-                    state.current_page_data = data
-                    _cache_page_data(state, url, data)
+                    state.current_page_data = page_data
+                    _cache_page_data(state, url, page_data)
 
                 # Count items (excluding sidebar)
-                links_count = len(data.get("links", []))
-                pdfs_count = len(data.get("pdfs", []))
-                embeds_count = len(data.get("embeds", []))
+                links_count = len(page_data.get("links", []))
+                pdfs_count = len(page_data.get("pdfs", []))
+                embeds_count = len(page_data.get("embeds", []))
 
                 # Calculate difficulty percentage
-                difficulty_pct = _calculate_difficulty_percentage(data.get("links", []))
+                difficulty_pct = _calculate_difficulty_percentage(page_data.get("links", []))
 
                 print(
                     f"  📊 Found: {links_count} links, {pdfs_count} PDFs, {embeds_count} embeds, {difficulty_pct:.1%} difficulty"

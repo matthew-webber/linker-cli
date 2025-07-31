@@ -29,7 +29,7 @@ function copyAnchorToClipboard(e, copyValue, text, linkKind) {
     // set bg color to a deep, pale red
     bgColor = '#830202ff';
   }
-  
+
   navigator.clipboard
     .writeText(anchorHtml)
     .then(function () {
@@ -43,4 +43,29 @@ function copyAnchorToClipboard(e, copyValue, text, linkKind) {
       console.error('Could not copy anchor HTML: ', err);
       alert('Copy failed. HTML: ' + anchorHtml);
     });
+}
+
+function copyMetaDescription() {
+  const metaDescElement = document.getElementById('meta-desc-text');
+  if (metaDescElement) {
+    const metaDesc = metaDescElement.textContent;
+
+    navigator.clipboard
+      .writeText(metaDesc)
+      .then(function () {
+        const button = event.target;
+        const originalText = button.textContent;
+        button.textContent = '✅';
+        button.style.background = 'mediumseagreen';
+
+        setTimeout(() => {
+          button.textContent = originalText;
+          button.style.background = '';
+        }, 1000);
+      })
+      .catch(function (err) {
+        console.error('Could not copy meta description: ', err);
+        alert('Copy failed. Text: ' + metaDesc);
+      });
+  }
 }
