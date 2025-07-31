@@ -110,7 +110,7 @@ def _generate_consolidated_section(state):
         html += """
             <p><strong>Meta Description:</strong> <em>Not available</em></p>"""
 
-    html += """
+    html += f"""
         </div>
 
         <div class="hierarchy-info">
