@@ -1,6 +1,7 @@
 import re
 import sys
 import shutil
+import json
 from pathlib import Path
 from io import StringIO
 from datetime import datetime
@@ -49,6 +50,113 @@ def _capture_output(func, *args, **kwargs):
         sys.stdout = old_stdout
 
 
+def _build_sitecore_nav_js(path: list[str]) -> str:
+    """Builds the JS to navigate sitecore from a path list."""
+    if not path:
+        return ""
+    js_array = json.dumps(path)
+    # This JS code is a slightly modified version of the one from
+    # templates/report/sitecore_node_traversal_template.py
+    return f"""(async () => {{
+  myDebug = 2;
+  myDebugLevels = {{
+    DEBUG: 1,
+    INFO: 2,
+    WARN: 3,
+  }};
+  const path = {js_array}
+  if (path.length === 0) {{
+    console.error('empty path');
+    return;
+  }}
+  const sanitizeName = (name) =>
+    name.toLowerCase().replace(/[-_]/g, ' ').trim();
+  if (path.some((name) => !name || typeof name !== 'string')) {{
+    console.error('invalid path', path);
+    return;
+  }}
+  const finalName = path[path.length - 1];
+  const expandNames = path.slice(0, -1);
+  const findNode = (name, searchRoot = document) =>
+    Array.from(searchRoot.querySelectorAll('.scContentTreeNode')).find(
+      (node) => {{
+        const target = sanitizeName(name);
+        const span = node.querySelector('span');
+        if (!span) {{
+          console.warn('no span for', name);
+          return false;
+        }}
+        if (myDebug < myDebugLevels.INFO) {{
+          console.log('span', span, 'textContent', span.textContent);
+          console.log(
+            'SANITIZED span.textContent:',
+            sanitizeName(span.textContent),
+            'target:',
+            target
+          );
+          console.log(
+            'checking "sanitizeName(span.textContent) === target":',
+            sanitizeName(span.textContent),
+            '===',
+            target
+          );
+        }}
+        return span && sanitizeName(span.textContent) === target;
+      }}
+    );
+  function waitForMatch(name, searchRoot = document, timeout = 5000) {{
+    return new Promise((resolve, reject) => {{
+      const start = Date.now();
+      (function check() {{
+        const m = findNode(name, searchRoot);
+        if (m) return resolve(m);
+        if (Date.now() - start > timeout)
+          return reject(new Error('Timeout waiting for ' + name));
+        setTimeout(check, 100);
+      }})();
+    }});
+  }}
+  async function expand(name, searchRoot = document) {{
+    const node = await waitForMatch(name, searchRoot);
+    const arrow = node.querySelector('img');
+    if (!arrow) {{
+      console.warn('no expand arrow for', name);
+      return node; // Return the node even if no arrow
+    }}
+    if (myDebug < myDebugLevels.WARN) {{
+      console.log('expanding', name, 'found node:', node, 'with arrow:', arrow);
+    }}
+    if (arrow.getAttribute('aria-expanded') === 'true') {{
+      console.log('already expanded', name);
+      return node;
+    }}
+    arrow.click();
+    await new Promise((r) => setTimeout(r, 200));
+    return node;
+  }}
+  async function clickNode(name, searchRoot = document) {{
+    const node = await waitForMatch(name, searchRoot);
+    const span = node.querySelector('span');
+    if (span) {{
+      span.click();
+    }} else {{
+      console.warn('no span to click for final node', name);
+    }}
+  }}
+  try {{
+    let currentSearchRoot = document;
+    for (const name of expandNames) {{
+      const expandedNode = await expand(name, currentSearchRoot);
+      // Update the search root to be the expanded node's subtree
+      currentSearchRoot = expandedNode;
+    }}
+    await clickNode(finalName, currentSearchRoot);
+  }} catch (e) {{
+    console.error(e);
+  }}
+}})();"""
+
+
 def _generate_consolidated_section(state):
     """Generate the consolidated section with enhanced link display."""
     url = state.get_variable("URL")
@@ -61,6 +169,8 @@ def _generate_consolidated_section(state):
 
     try:
         from utils.sitecore import get_sitecore_root
+        import json
+        from html import escape
 
         root = get_sitecore_root(url)
         if url:
@@ -79,10 +189,24 @@ def _generate_consolidated_section(state):
             ]
         else:
             proposed_segments = []
+
+        # For "Current Structure", the path starts with "Sites"
+        current_path_for_js = ["Sites", root] + existing_segments
+        current_js = _build_sitecore_nav_js(current_path_for_js)
+        # The JS needs to be escaped to be put in an HTML attribute
+        escaped_current_js = escape(current_js, quote=True)
+
+        # For "Proposed Structure", the path starts with "Redesign Sites"
+        proposed_path_for_js = ["Redesign Sites", root] + proposed_segments
+        proposed_js = _build_sitecore_nav_js(proposed_path_for_js)
+        escaped_proposed_js = escape(proposed_js, quote=True)
+
     except Exception:
         root = "Sites"
         existing_segments = []
         proposed_segments = []
+        escaped_current_js = ""
+        escaped_proposed_js = ""
 
     html = f"""
     <div class="consolidated-section">
@@ -117,7 +241,12 @@ def _generate_consolidated_section(state):
             <h3>🏗️ Directory Structure</h3>
             <div class="hierarchy-comparison">
                 <div class="existing-hierarchy">
-                    <h4>Current Structure</h4>
+                    <h4>
+                        Current Structure
+                        <button class="copy-btn" onclick="copyToClipboard(event, `{escaped_current_js}`)" title="Copy Sitecore navigation JS">
+                            <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor"><path d="M16 1H4c-1.1 0-2 .9-2 2v14h2V3h12V1zm3 4H8c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h11c1.1 0 2-.9 2-2V7c0-1.1-.9-2-2-2zm0 16H8V7h11v14z"/></svg>
+                        </button>
+                    </h4>
                     <div class="hierarchy-tree">
                         🏠 {root}<br>
     """
@@ -126,11 +255,16 @@ def _generate_consolidated_section(state):
         indent = "   " * (i + 1)
         html += f"{indent}|-- {segment}<br>"
 
-    html += """
+    html += f"""
                     </div>
                 </div>
                 <div class="proposed-hierarchy">
-                    <h4>Proposed Structure</h4>
+                    <h4>
+                        Proposed Structure
+                        <button class="copy-btn" onclick="copyToClipboard(event, `{escaped_proposed_js}`)" title="Copy Sitecore navigation JS">
+                            <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor"><path d="M16 1H4c-1.1 0-2 .9-2 2v14h2V3h12V1zm3 4H8c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h11c1.1 0 2-.9 2-2V7c0-1.1-.9-2-2-2zm0 16H8V7h11v14z"/></svg>
+                        </button>
+                    </h4>
                     <div class="hierarchy-tree">
     """
 
