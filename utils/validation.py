@@ -42,8 +42,7 @@ def validate_load_args(args):
         None,
     )
     if not domain:
-        valid_domains = ", ".join(d.get("full_name") for d in DOMAINS)
-        raise ValueError(f"Domain '{user_domain}' not found. Valid domains: {valid_domains}")
+        raise ValueError(f"Domain '{user_domain}' not found.")
 
     return domain, row_num
 
