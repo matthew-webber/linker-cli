@@ -45,7 +45,7 @@ function copyAnchorToClipboard(e, copyValue, text, linkKind) {
     });
 }
 
-function copyMetaDescription() {
+function copyMetaDescription(e) {
   const metaDescElement = document.getElementById('meta-desc-text');
   if (metaDescElement) {
     const metaDesc = metaDescElement.textContent;
@@ -53,7 +53,7 @@ function copyMetaDescription() {
     navigator.clipboard
       .writeText(metaDesc)
       .then(function () {
-        const button = event.target;
+        const button = e.target;
         const originalText = button.textContent;
         button.textContent = '✅';
         button.style.background = 'mediumseagreen';

@@ -103,7 +103,7 @@ def _generate_consolidated_section(state):
 
         html += f"""
             <p><strong>Meta Description:</strong> 
-                <button onclick="copyMetaDescription()" class="copy-btn" title="Copy meta description">📋</button>
+                <button onclick="copyMetaDescription(event)" class="copy-btn" style="display: inline-flex;" title="Copy meta description">📋</button>
                 <span id="meta-desc-text">{escaped_meta}</span>
             </p>"""
     else:
