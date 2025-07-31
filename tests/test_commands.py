@@ -18,6 +18,7 @@ from commands import bulk as bulk_cmd
 from commands import check as check_cmd
 from utils import core as utils
 from utils import cache as cache_utils
+from utils import validation as validation_utils
 
 
 @pytest.fixture
@@ -187,6 +188,17 @@ def test_cmd_load_success(monkeypatch, cli_state, capsys):
     assert "Loaded URL" in capsys.readouterr().out
 
 
+def test_cmd_load_invalid_args(monkeypatch, cli_state, capsys):
+    """Ensure validation wrapper prevents execution with bad args."""
+    cli_state.excel_data = MagicMock()
+    monkeypatch.setattr(load_cmd, "get_existing_url", MagicMock())
+    monkeypatch.setattr(load_cmd, "get_proposed_url", MagicMock())
+    load_cmd.cmd_load(["Enterprise", "bad"], cli_state)
+    out = capsys.readouterr().out
+    assert "Row number must be an integer" in out
+    assert cli_state.get_variable("URL") == ""
+
+
 # ----- cmd_report test -----
 
 
@@ -228,3 +240,27 @@ def test_cmd_show_variables(mock_state):
 def test_cmd_show_page_no_data(cli_state, capsys):
     commands.cmd_show(["page"], cli_state)
     assert "No page data loaded" in capsys.readouterr().out
+
+
+# ----- validation utils tests -----
+
+
+def test_validate_load_args_success():
+    domain, row = validation_utils.validate_load_args(["Enterprise", "10"])
+    assert domain.get("full_name") == "Enterprise"
+    assert row == 10
+
+
+def test_validate_load_args_invalid_row():
+    with pytest.raises(ValueError, match="Row number must be an integer"):
+        validation_utils.validate_load_args(["Enterprise", "bad"])
+
+
+def test_validate_load_args_unknown_domain():
+    with pytest.raises(ValueError, match="Domain 'Unknown'"):
+        validation_utils.validate_load_args(["Unknown", "1"])
+
+
+def test_validate_load_args_missing_args():
+    with pytest.raises(ValueError, match="Expected: load <domain> <row>"):
+        validation_utils.validate_load_args([])
