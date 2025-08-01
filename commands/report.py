@@ -54,107 +54,9 @@ def _build_sitecore_nav_js(path: list[str]) -> str:
     """Builds the JS to navigate sitecore from a path list."""
     if not path:
         return ""
-    js_array = json.dumps(path)
-    # This JS code is a slightly modified version of the one from
-    # templates/report/sitecore_node_traversal_template.py
-    return f"""(async () => {{
-  myDebug = 3;
-  myDebugLevels = {{
-    DEBUG: 1,
-    INFO: 2,
-    WARN: 3,
-  }};
-  const path = {js_array}
-  if (path.length === 0) {{
-    console.error('empty path');
-    return;
-  }}
-  const sanitizeName = (name) =>
-    name.toLowerCase().replace(/[-_]/g, ' ').trim();
-  if (path.some((name) => !name || typeof name !== 'string')) {{
-    console.error('invalid path', path);
-    return;
-  }}
-  const finalName = path[path.length - 1];
-  const expandNames = path.slice(0, -1);
-  const findNode = (name, searchRoot = document) =>
-    Array.from(searchRoot.querySelectorAll('.scContentTreeNode')).find(
-      (node) => {{
-        const target = sanitizeName(name);
-        const span = node.querySelector('span');
-        if (!span) {{
-          console.warn('no span for', name);
-          return false;
-        }}
-        if (myDebug < myDebugLevels.INFO) {{
-          console.log('span', span, 'textContent', span.textContent);
-          console.log(
-            'SANITIZED span.textContent:',
-            sanitizeName(span.textContent),
-            'target:',
-            target
-          );
-          console.log(
-            'checking "sanitizeName(span.textContent) === target":',
-            sanitizeName(span.textContent),
-            '===',
-            target
-          );
-        }}
-        return span && sanitizeName(span.textContent) === target;
-      }}
-    );
-  function waitForMatch(name, searchRoot = document, timeout = 5000) {{
-    return new Promise((resolve, reject) => {{
-      const start = Date.now();
-      (function check() {{
-        const m = findNode(name, searchRoot);
-        if (m) return resolve(m);
-        if (Date.now() - start > timeout)
-          return reject(new Error('Timeout waiting for ' + name));
-        setTimeout(check, 1000);
-      }})();
-    }});
-  }}
-  async function expand(name, searchRoot = document) {{
-    const node = await waitForMatch(name, searchRoot);
-    const arrow = node.querySelector('img');
-    if (!arrow) {{
-      console.warn('no expand arrow for', name);
-      return node; // Return the node even if no arrow
-    }}
-    if (myDebug < myDebugLevels.WARN) {{
-      console.log('expanding', name, 'found node:', node, 'with arrow:', arrow);
-    }}
-    if (arrow.getAttribute('aria-expanded') === 'true') {{
-      console.log('already expanded', name);
-      return node;
-    }}
-    arrow.click();
-    await new Promise((r) => setTimeout(r, 200));
-    return node;
-  }}
-  async function clickNode(name, searchRoot = document) {{
-    const node = await waitForMatch(name, searchRoot);
-    const span = node.querySelector('span');
-    if (span) {{
-      span.click();
-    }} else {{
-      console.warn('no span to click for final node', name);
-    }}
-  }}
-  try {{
-    let currentSearchRoot = document;
-    for (const name of expandNames) {{
-      const expandedNode = await expand(name, currentSearchRoot);
-      // Update the search root to be the expanded node's subtree
-      currentSearchRoot = expandedNode;
-    }}
-    await clickNode(finalName, currentSearchRoot);
-  }} catch (e) {{
-    console.error(e);
-  }}
-}})();"""
+
+    json_path_array = json.dumps(path)
+    return SITECORE_NAV_JS_TEMPLATE.format(path_array=json_path_array)
 
 
 def _generate_consolidated_section(state):
@@ -657,3 +559,103 @@ def cmd_report(args, state):
         return
 
     _generate_report(state, prompt_open=True, force_regenerate=force_regenerate)
+
+
+SITECORE_NAV_JS_TEMPLATE = """(async () => {{
+  myDebug = 3;
+  myDebugLevels = {{
+    DEBUG: 1,
+    INFO: 2,
+    WARN: 3,
+  }};
+  const path = {path_array};
+  if (path.length === 0) {{
+    console.error('empty path');
+    return;
+  }}
+  const sanitizeName = (name) =>
+    name.toLowerCase().replace(/[-_]/g, ' ').trim();
+  if (path.some((name) => !name || typeof name !== 'string')) {{
+    console.error('invalid path', path);
+    return;
+  }}
+  const finalName = path[path.length - 1];
+  const expandNames = path.slice(0, -1);
+  const findNode = (name, searchRoot = document) =>
+    Array.from(searchRoot.querySelectorAll('.scContentTreeNode')).find(
+      (node) => {{
+        const target = sanitizeName(name);
+        const span = node.querySelector('span');
+        if (!span) {{
+          console.warn('no span for', name);
+          return false;
+        }}
+        if (myDebug < myDebugLevels.INFO) {{
+          console.log('span', span, 'textContent', span.textContent);
+          console.log(
+            'SANITIZED span.textContent:',
+            sanitizeName(span.textContent),
+            'target:',
+            target
+          );
+          console.log(
+            'checking "sanitizeName(span.textContent) === target":',
+            sanitizeName(span.textContent),
+            '===',
+            target
+          );
+        }}
+        return span && sanitizeName(span.textContent) === target;
+      }}
+    );
+  function waitForMatch(name, searchRoot = document, timeout = 5000) {{
+    return new Promise((resolve, reject) => {{
+      const start = Date.now();
+      (function check() {{
+        const m = findNode(name, searchRoot);
+        if (m) return resolve(m);
+        if (Date.now() - start > timeout)
+          return reject(new Error('Timeout waiting for ' + name));
+        setTimeout(check, 1000);
+      }})();
+    }});
+  }}
+  async function expand(name, searchRoot = document) {{
+    const node = await waitForMatch(name, searchRoot);
+    const arrow = node.querySelector('img');
+    if (!arrow) {{
+      console.warn('no expand arrow for', name);
+      return node; // Return the node even if no arrow
+    }}
+    if (myDebug < myDebugLevels.WARN) {{
+      console.log('expanding', name, 'found node:', node, 'with arrow:', arrow);
+    }}
+    if (arrow.getAttribute('aria-expanded') === 'true') {{
+      console.log('already expanded', name);
+      return node;
+    }}
+    arrow.click();
+    await new Promise((r) => setTimeout(r, 200));
+    return node;
+  }}
+  async function clickNode(name, searchRoot = document) {{
+    const node = await waitForMatch(name, searchRoot);
+    const span = node.querySelector('span');
+    if (span) {{
+      span.click();
+    }} else {{
+      console.warn('no span to click for final node', name);
+    }}
+  }}
+  try {{
+    let currentSearchRoot = document;
+    for (const name of expandNames) {{
+      const expandedNode = await expand(name, currentSearchRoot);
+      // Update the search root to be the expanded node's subtree
+      currentSearchRoot = expandedNode;
+    }}
+    await clickNode(finalName, currentSearchRoot);
+  }} catch (e) {{
+    console.error(e);
+  }}
+}})();"""
