@@ -630,7 +630,8 @@ SITECORE_NAV_JS_TEMPLATE = """(async () => {{
     if (myDebug < myDebugLevels.WARN) {{
       console.log('expanding', name, 'found node:', node, 'with arrow:', arrow);
     }}
-    if (arrow.getAttribute('aria-expanded') === 'true') {{
+    if (node.lastElementChild.tagName === 'DIV') {{
+      // If the last child is a DIV, it means it's already expanded
       console.log('already expanded', name);
       return node;
     }}
