@@ -168,11 +168,12 @@ def _generate_consolidated_section(state):
         return "<p>No page data available.</p>"
 
     try:
-        from utils.sitecore import get_sitecore_root
-        import json
+        from utils.sitecore import get_current_sitecore_root, get_proposed_sitecore_root
         from html import escape
 
-        root = get_sitecore_root(url)
+        current_root = get_current_sitecore_root(url)
+        proposed_root = get_proposed_sitecore_root(url)
+
         if url:
             from urllib.parse import urlparse
 
@@ -187,22 +188,34 @@ def _generate_consolidated_section(state):
             proposed_segments = [
                 seg for seg in proposed_path.strip("/").split("/") if seg
             ]
+            # HACK - if the first two segements are exactly 'sitecore' and 'content',
+            # remove them from the proposed segments
+            if (
+                len(proposed_segments) >= 3
+                and proposed_segments[0] == "sitecore"
+                and proposed_segments[1] == "content"
+                and proposed_segments[2] == "Content Hub"
+            ):
+                proposed_segments = proposed_segments[3:]
         else:
             proposed_segments = []
 
         # For "Current Structure", the path starts with "Sites"
-        current_path_for_js = ["Sites", root] + existing_segments
+        current_path_for_js = ["Sites", current_root] + existing_segments
         current_js = _build_sitecore_nav_js(current_path_for_js)
-        # The JS needs to be escaped to be put in an HTML attribute
         escaped_current_js = escape(current_js, quote=True)
 
         # For "Proposed Structure", the path starts with "Redesign Sites"
-        proposed_path_for_js = ["Redesign Sites", root] + proposed_segments
+        proposed_path_for_js = ["Redesign Sites", proposed_root] + proposed_segments
+        proposed_root == "Content Hub" and proposed_path_for_js.pop(
+            0
+        )  # HACK - remove "Redesign Sites" if it's a Content Hub path
         proposed_js = _build_sitecore_nav_js(proposed_path_for_js)
         escaped_proposed_js = escape(proposed_js, quote=True)
 
     except Exception:
-        root = "Sites"
+        current_root = "Sites"
+        proposed_root = "Sites"
         existing_segments = []
         proposed_segments = []
         escaped_current_js = ""
@@ -248,7 +261,7 @@ def _generate_consolidated_section(state):
                         </button>
                     </h4>
                     <div class="hierarchy-tree">
-                        🏠 {root}<br>
+                        🏠 {current_root}<br>
     """
 
     for i, segment in enumerate(existing_segments):
@@ -269,7 +282,7 @@ def _generate_consolidated_section(state):
     """
 
     if proposed_segments:
-        html += f"                        🏠 {root}<br>"
+        html += f"                        🏠 {proposed_root}<br>"
         for i, segment in enumerate(proposed_segments):
             indent = "   " * (i + 1)
             html += f"{indent}|-- {segment}<br>"

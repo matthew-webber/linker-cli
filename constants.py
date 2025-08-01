@@ -100,6 +100,7 @@ DOMAINS = [
         "worksheet_header_row": 0,
         "existing_url_col_name": "Current URL",
         "proposed_url_col_name": "proposed path",
+        "root_for_new_sitecore": "Content Hub",
     },
     {
         "full_name": "Progress Notes",
@@ -110,6 +111,7 @@ DOMAINS = [
         "worksheet_header_row": 0,
         "existing_url_col_name": "Current URL",
         "proposed_url_col_name": "proposed path",
+        "root_for_new_sitecore": "Content Hub",
     },
 ]
 

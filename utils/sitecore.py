@@ -1,6 +1,6 @@
 from urllib.parse import urlparse
 
-from constants import DOMAIN_MAPPING
+from constants import DOMAIN_MAPPING, DOMAINS
 
 
 def format_hierarchy(root: str, segments: list) -> str:
@@ -19,6 +19,32 @@ def get_sitecore_root(existing_url: str) -> str:
     parsed = urlparse(existing_url)
     hostname = parsed.hostname or ""
     return DOMAIN_MAPPING.get(hostname, hostname.split(".")[0])
+
+
+def get_current_sitecore_root(existing_url: str) -> str:
+    """
+    Get the current Sitecore root folder name based on the existing URL.
+    """
+    return get_sitecore_root(existing_url)
+
+
+def get_proposed_sitecore_root(existing_url: str) -> str:
+    """
+    Get the proposed Sitecore root folder name based on the proposed path.
+    """
+    from utils.core import debug_print
+
+    proposed_root = next(
+        (
+            domain["root_for_new_sitecore"]
+            for domain in DOMAINS
+            if domain.get("url") in existing_url and domain.get("root_for_new_sitecore")
+        ),
+        None,
+    )
+
+    debug_print(f"Proposed root for {existing_url}: {proposed_root}")
+    return proposed_root or get_sitecore_root(existing_url)
 
 
 def print_hierarchy(existing_url: str):
