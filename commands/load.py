@@ -12,6 +12,58 @@ from utils.cache import _update_state_from_cache
 from utils.validation import validation_wrapper
 
 
+def _load_url_from_sheet(state, domain, row_num):
+    """Load URL and proposed path for a domain/row and update state.
+
+    Parameters
+    ----------
+    state : object
+        Current CLI state object containing the loaded spreadsheet and variables.
+    domain : dict
+        Domain configuration dictionary from :data:`DOMAINS`.
+    row_num : int
+        Row number in the spreadsheet to load.
+
+    Returns
+    -------
+    tuple[str | None, str | None]
+        ``(url, proposed_path)`` if a URL was found, otherwise ``(None, None)``.
+    """
+
+    if not state.excel_data:
+        dsm_file = get_latest_dsm_file()
+        if not dsm_file:
+            raise RuntimeError("No DSM file found. Set DSM_FILE manually or place a dsm-*.xlsx file in the directory.")
+        state.excel_data = load_spreadsheet(dsm_file)
+        state.set_variable("DSM_FILE", dsm_file)
+
+    df_header_row = domain.get("worksheet_header_row", 4) + 2
+    existing_url_header = domain.get("existing_url_col_name", "EXISTING URL")
+    proposed_url_header = domain.get("proposed_url_col_name", "PROPOSED URL")
+
+    df = state.excel_data.parse(
+        sheet_name=domain.get("worksheet_name"),
+        header=domain.get("worksheet_header_row", 4),
+    )
+
+    url = get_existing_url(df, row_num - df_header_row, col_name=existing_url_header)
+    proposed = get_proposed_url(df, row_num - df_header_row, col_name=proposed_url_header)
+
+    if not url:
+        return None, None
+
+    state.set_variable("URL", url)
+    state.set_variable("PROPOSED_PATH", proposed)
+    state.set_variable("DOMAIN", domain.get("full_name", "Domain Placeholder"))
+    state.set_variable("ROW", str(row_num))
+
+    _update_state_from_cache(
+        state, url=url, domain=domain.get("full_name"), row=str(row_num)
+    )
+
+    return url, proposed
+
+
 @validation_wrapper
 def cmd_load(args, state, *, validated=None):
     """Handle the 'load' command for loading URLs from spreadsheet."""
@@ -46,49 +98,19 @@ def cmd_load(args, state, *, validated=None):
                 print(f"  {i:2}. {domain_obj}")
             return
 
-    if not state.excel_data:
-        dsm_file = get_latest_dsm_file()
-        if not dsm_file:
-            print("❌ No DSM file found. Set DSM_FILE manually.")
-            return
-        state.excel_data = load_spreadsheet(dsm_file)
-        state.set_variable("DSM_FILE", dsm_file)
-
-    df_header_row = domain.get("worksheet_header_row", 4) if domain else 4
-    df_header_row = df_header_row + 2
-    existing_url_header = domain.get("existing_url_col_name", "EXISTING URL")
-    proposed_url_header = domain.get("proposed_url_col_name", "PROPOSED URL")
-
     try:
-        df = state.excel_data.parse(
-            sheet_name=domain.get("worksheet_name"),
-            header=domain.get("worksheet_header_row", 4),
-        )
-        url = get_existing_url(
-            df, row_num - df_header_row, col_name=existing_url_header
-        )
-        proposed = get_proposed_url(
-            df, row_num - df_header_row, col_name=proposed_url_header
-        )
-
+        url, _ = _load_url_from_sheet(state, domain, row_num)
         if not url:
-            print(f"❌ Could not find URL for {domain} row {row_num}")
+            print(f"❌ Could not find URL for {domain.get('full_name')} row {row_num}")
             return
-
-        state.set_variable("URL", url)
-        state.set_variable("PROPOSED_PATH", proposed)
-        state.set_variable("DOMAIN", domain.get("full_name", "Domain Placeholder"))
-        state.set_variable("ROW", str(row_num))
-
-        _update_state_from_cache(
-            state, url=url, domain=domain.get("full_name"), row=str(row_num)
-        )
 
         warn = count_http(url) > 1
         print(f"✅ Loaded URL: {url[:60]}{'...' if len(url) > 60 else ''}")
         if warn:
             print("⚠️  WARNING: Multiple URLs detected in this cell.")
 
+    except RuntimeError as e:
+        print(f"❌ {e}")
     except Exception as e:
         print(f"❌ Error loading from spreadsheet: {e}")
         debug_print(f"Full error: {e}")

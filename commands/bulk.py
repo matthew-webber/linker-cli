@@ -7,11 +7,10 @@ from utils.cache import (
 )
 from commands.common import print_help_for_command
 from data.dsm import (
-    get_existing_url,
     get_latest_dsm_file,
-    get_proposed_url,
     load_spreadsheet,
 )
+from commands.load import _load_url_from_sheet
 from utils.scraping import retrieve_page_data
 from utils.core import debug_print
 
@@ -194,8 +193,8 @@ def _update_bulk_check_xlsx(
         return False
 
 
-# TODO - this does basically the same thing as cmd_load, but for bulk check
-# Consider refactoring to avoid duplication
+# Helper used by ``cmd_bulk_check`` to load page information.  Shares logic with
+# ``cmd_load`` via :func:`_load_url_from_sheet`.
 def _bulk_load_url(state, domain_name, row_num):
     """
     Loads URL and related information from an Excel spreadsheet for a given domain and row number.
@@ -217,9 +216,7 @@ def _bulk_load_url(state, domain_name, row_num):
     Notes:
         - The function assumes the presence of a global `DOMAINS` list, where each domain is a dictionary
           containing metadata such as `full_name` and `worksheet_header_row`.
-        - The `state.excel_data.parse` method is used to parse the Excel sheet.
-        - The `get_existing_url` and `get_proposed_url` functions are used to extract URL data from the
-          spreadsheet.
+        - URL loading is delegated to :func:`_load_url_from_sheet` to keep behavior consistent with ``cmd_load``.
     """
 
     domain = next(
@@ -236,44 +233,18 @@ def _bulk_load_url(state, domain_name, row_num):
         debug_print(f"Domain '{domain_name}' not found")
         return False
 
-    df_header_row = domain.get("worksheet_header_row", 4) if domain else 4
-    df_header_row = df_header_row + 2
-    existing_url_header = domain.get("existing_url_col_name", "EXISTING URL")
-    proposed_url_header = domain.get("proposed_url_col_name", "PROPOSED URL")
     try:
-        df = state.excel_data.parse(
-            sheet_name=domain.get("worksheet_name"),
-            header=domain.get("worksheet_header_row", 4),
-        )
-
-        url = get_existing_url(
-            df,
-            row_num - df_header_row,
-            col_name=existing_url_header,
-        )
-        proposed = get_proposed_url(
-            df,
-            row_num - df_header_row,
-            col_name=proposed_url_header,
-        )
-
+        url, _ = _load_url_from_sheet(state, domain, row_num)
         if not url:
             debug_print(f"Could not find URL for {domain_name} row {row_num}")
             return False
 
-        state.set_variable("URL", url)
-        state.set_variable("PROPOSED_PATH", proposed)
-        state.set_variable("DOMAIN", domain.get("full_name", "Domain Placeholder"))
-        state.set_variable("ROW", str(row_num))
-
-        _update_state_from_cache(
-            state, url=url, domain=domain.get("full_name"), row=str(row_num)
-        )
-
         return True
 
     except Exception as e:
-        debug_print(f"Error loading from spreadsheet: {e}")
+        print(f"❌ Error loading from spreadsheet: {e}")
+        # TODO: if it's a runtime error, we want to exit the command somehow without exiting the app altogether,
+        #   but also without continuing to process the bulk check
         return False
 
 
@@ -310,17 +281,17 @@ def cmd_bulk_check(args, state):
 
         print(f"📊 Found {len(rows_to_process)} rows to process")
 
-        # Ensure we have a DSM file loaded
-        if not state.excel_data:
-            dsm_file = get_latest_dsm_file()
-            if not dsm_file:
-                print(
-                    "❌ No DSM file found. Set DSM_FILE manually or place a dsm-*.xlsx file in the directory."
-                )
-                return
-            state.excel_data = load_spreadsheet(dsm_file)
-            state.set_variable("DSM_FILE", dsm_file)
-            print(f"📊 Loaded DSM file: {dsm_file}")
+        # # Ensure we have a DSM file loaded
+        # if not state.excel_data:
+        #     dsm_file = get_latest_dsm_file()
+        #     if not dsm_file:
+        #         print(
+        #             "❌ No DSM file found. Set DSM_FILE manually or place a dsm-*.xlsx file in the directory."
+        #         )
+        #         return
+        #     state.excel_data = load_spreadsheet(dsm_file)
+        #     state.set_variable("DSM_FILE", dsm_file)
+        #     print(f"📊 Loaded DSM file: {dsm_file}")
 
         # Process each row
         processed_count = 0
@@ -384,7 +355,9 @@ def cmd_bulk_check(args, state):
                 embeds_count = len(page_data.get("embeds", []))
 
                 # Calculate difficulty percentage
-                difficulty_pct = _calculate_difficulty_percentage(page_data.get("links", []))
+                difficulty_pct = _calculate_difficulty_percentage(
+                    page_data.get("links", [])
+                )
 
                 print(
                     f"  📊 Found: {links_count} links, {pdfs_count} PDFs, {embeds_count} embeds, {difficulty_pct:.1%} difficulty"
