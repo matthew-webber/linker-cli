@@ -58,7 +58,7 @@ def _build_sitecore_nav_js(path: list[str]) -> str:
     # This JS code is a slightly modified version of the one from
     # templates/report/sitecore_node_traversal_template.py
     return f"""(async () => {{
-  myDebug = 2;
+  myDebug = 3;
   myDebugLevels = {{
     DEBUG: 1,
     INFO: 2,
@@ -112,7 +112,7 @@ def _build_sitecore_nav_js(path: list[str]) -> str:
         if (m) return resolve(m);
         if (Date.now() - start > timeout)
           return reject(new Error('Timeout waiting for ' + name));
-        setTimeout(check, 100);
+        setTimeout(check, 1000);
       }})();
     }});
   }}
