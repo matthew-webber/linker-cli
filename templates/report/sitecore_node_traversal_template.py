@@ -6,12 +6,12 @@ from typing import List
 
 EMOJI_PATTERN = re.compile(
     "["
-    "\U0001F600-\U0001F64F"  # emoticons
-    "\U0001F300-\U0001F5FF"  # symbols & pictographs
-    "\U0001F680-\U0001F6FF"  # transport & map symbols
-    "\U0001F1E0-\U0001F1FF"  # flags
-    "\U00002702-\U000027B0"
-    "\U000024C2-\U0001F251"
+    "\U0001f600-\U0001f64f"  # emoticons
+    "\U0001f300-\U0001f5ff"  # symbols & pictographs
+    "\U0001f680-\U0001f6ff"  # transport & map symbols
+    "\U0001f1e0-\U0001f1ff"  # flags
+    "\U00002702-\U000027b0"
+    "\U000024c2-\U0001f251"
     "]+",
     flags=re.UNICODE,
 )
@@ -32,7 +32,7 @@ def parse_tree_outline(tree_str: str) -> List[str]:
     else:
         path.append(strip_emojis(header).strip())
     for line in lines[1:]:
-        cleaned = re.sub(r'^[\|\-\s]*', "", line)
+        cleaned = re.sub(r"^[\|\-\s]*", "", line)
         cleaned = strip_emojis(cleaned).strip()
         if cleaned:
             path.append(cleaned)
@@ -156,19 +156,26 @@ def copy_to_clipboard(text: str):
             p.communicate(text.encode("utf-8"))
         else:
             try:
-                p = subprocess.Popen(["xclip", "-selection", "clipboard"], stdin=subprocess.PIPE)
+                p = subprocess.Popen(
+                    ["xclip", "-selection", "clipboard"], stdin=subprocess.PIPE
+                )
                 p.communicate(text.encode("utf-8"))
             except FileNotFoundError:
                 try:
-                    p = subprocess.Popen(["xsel", "--clipboard", "--input"], stdin=subprocess.PIPE)
+                    p = subprocess.Popen(
+                        ["xsel", "--clipboard", "--input"], stdin=subprocess.PIPE
+                    )
                     p.communicate(text.encode("utf-8"))
                 except FileNotFoundError:
-                    raise RuntimeError("no clipboard utility found (install xclip/xsel)")
+                    raise RuntimeError(
+                        "no clipboard utility found (install xclip/xsel)"
+                    )
         print("JS code copied to clipboard.")
     except Exception as e:
         print(f"failed to copy to clipboard: {e}")
         print("---- fallback output below ----")
         print(text)
+
 
 def read_outline() -> str:
     if not sys.stdin.isatty():

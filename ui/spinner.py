@@ -2,12 +2,14 @@ import sys
 import threading
 import time
 
+
 class Spinner:
     """A simple spinner for CLI loading indicators."""
+
     def __init__(self, message="Loading... ", delay=0.1):
         self.message = message
         self.delay = delay
-        self.spinner_chars = ['|', '/', '-', '\\']
+        self.spinner_chars = ["|", "/", "-", "\\"]
         self.running = False
         self._thread = None
 
@@ -19,11 +21,11 @@ class Spinner:
             sys.stdout.write(self.spinner_chars[idx % len(self.spinner_chars)])
             sys.stdout.flush()
             time.sleep(self.delay)
-            sys.stdout.write('\b')
+            sys.stdout.write("\b")
             idx += 1
         # Clear spinner character and move to line start
-        sys.stdout.write(' ')
-        sys.stdout.write('\r')
+        sys.stdout.write(" ")
+        sys.stdout.write("\r")
         sys.stdout.flush()
 
     def start(self):

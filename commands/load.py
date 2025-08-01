@@ -33,7 +33,9 @@ def _load_url_from_sheet(state, domain, row_num):
     if not state.excel_data:
         dsm_file = get_latest_dsm_file()
         if not dsm_file:
-            raise RuntimeError("No DSM file found. Set DSM_FILE manually or place a dsm-*.xlsx file in the directory.")
+            raise RuntimeError(
+                "No DSM file found. Set DSM_FILE manually or place a dsm-*.xlsx file in the directory."
+            )
         state.excel_data = load_spreadsheet(dsm_file)
         state.set_variable("DSM_FILE", dsm_file)
 
@@ -47,7 +49,9 @@ def _load_url_from_sheet(state, domain, row_num):
     )
 
     url = get_existing_url(df, row_num - df_header_row, col_name=existing_url_header)
-    proposed = get_proposed_url(df, row_num - df_header_row, col_name=proposed_url_header)
+    proposed = get_proposed_url(
+        df, row_num - df_header_row, col_name=proposed_url_header
+    )
 
     if not url:
         return None, None
@@ -81,7 +85,11 @@ def cmd_load(args, state, *, validated=None):
         debug_print("Executing cmd_load with args:", args)
 
         domain = next(
-            (d for d in DOMAINS if d.get("full_name", "").lower() == user_domain.lower()),
+            (
+                d
+                for d in DOMAINS
+                if d.get("full_name", "").lower() == user_domain.lower()
+            ),
             None,
         )
 
