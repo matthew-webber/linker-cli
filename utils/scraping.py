@@ -61,37 +61,39 @@ def extract_meta_description(soup):
     return ""
 
 
-def extract_links_from_page(url, selector="#main"):
+def extract_links_from_page(soup, response, selector="#main"):
+    """Extract hyperlinks from a BeautifulSoup page container.
+
+    This function now expects the page's ``soup`` and ``response`` objects to
+    be provided.  This avoids fetching the same page multiple times when
+    called from ``retrieve_page_data``.
+    """
+
     debug_print(f"Using CSS selector: {selector}")
-    try:
-        soup, response = get_page_soup(url)
-        container = soup.select_one(selector)
-        if not container:
-            print(
-                f"⚠️ Warning ⚠️: No element found matching selector '{selector}', falling back to entire page"
-            )
-            container = soup
-        anchors = container.find_all("a", href=True)
-        debug_print(f"Found {len(anchors)} anchor tags")
-        links = []
-        pdfs = []
-        for a in anchors:
-            text = a.get_text(strip=True)
-            href = urljoin(response.url, a["href"])
-            debug_print(
-                f"Processing link: {text[:50]}{'...' if len(text) > 50 else ''} -> {href}"
-            )
-            status_code = check_status_code(href)
-            if href.lower().endswith(".pdf"):
-                pdfs.append((text, href, status_code))
-                debug_print(f"  -> Categorized as PDF")
-            else:
-                links.append((text, href, status_code))
-                debug_print(f"  -> Categorized as regular link")
-        return links, pdfs
-    except requests.RequestException as e:
-        debug_print(f"Error fetching page: {e}")
-        raise
+    container = soup.select_one(selector)
+    if not container:
+        print(
+            f"⚠️ Warning ⚠️: No element found matching selector '{selector}', falling back to entire page"
+        )
+        container = soup
+    anchors = container.find_all("a", href=True)
+    debug_print(f"Found {len(anchors)} anchor tags")
+    links = []
+    pdfs = []
+    for a in anchors:
+        text = a.get_text(strip=True)
+        href = urljoin(response.url, a["href"])
+        debug_print(
+            f"Processing link: {text[:50]}{'...' if len(text) > 50 else ''} -> {href}"
+        )
+        status_code = check_status_code(href)
+        if href.lower().endswith(".pdf"):
+            pdfs.append((text, href, status_code))
+            debug_print(f"  -> Categorized as PDF")
+        else:
+            links.append((text, href, status_code))
+            debug_print(f"  -> Categorized as regular link")
+    return links, pdfs
 
 
 def extract_embeds_from_page(soup, selector="#main"):
@@ -113,7 +115,6 @@ def extract_embeds_from_page(soup, selector="#main"):
     return embeds
 
 
-# TODO - refactor this to pass the soup and response objects instead of fetching again in the extract_* functions
 def retrieve_page_data(url, selector="#main", include_sidebar=False):
     debug_print(f"Retrieving page data for URL: {url}")
 
@@ -122,7 +123,7 @@ def retrieve_page_data(url, selector="#main", include_sidebar=False):
 
         # Extract main content
         debug_print(f"Extracting main content using selector: {selector}")
-        main_links, main_pdfs = extract_links_from_page(url, selector)
+        main_links, main_pdfs = extract_links_from_page(soup, response, selector)
         debug_print(
             f"Extracted {len(main_links)} links and {len(main_pdfs)} PDFs from main content"
         )
@@ -135,7 +136,7 @@ def retrieve_page_data(url, selector="#main", include_sidebar=False):
             debug_print("Sidebar content extraction enabled")
             try:
                 sidebar_links, sidebar_pdfs = extract_links_from_page(
-                    url, "#sidebar-components"
+                    soup, response, "#sidebar-components"
                 )
                 debug_print(
                     f"Extracted {len(sidebar_links)} links and {len(sidebar_pdfs)} PDFs from sidebar"
