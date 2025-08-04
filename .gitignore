@@ -71,3 +71,6 @@ coverage.xml
 
 migration_cache/
 reports/
+
+# temp files from updating profider profile URLs
+update_provider_profile_urls/*.html
