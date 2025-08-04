@@ -3,6 +3,7 @@ import re
 from pathlib import Path
 from bs4 import BeautifulSoup
 
+
 def extract_first_last(name_text: str):
     # Strip off credentials after comma, e.g. "W. Scott Russell, M.D." -> "W. Scott Russell"
     name_part = name_text.split(",", 1)[0].strip()
@@ -16,7 +17,9 @@ def extract_first_last(name_text: str):
     tokens_before = tokens[:-1]
     first_name_candidate = None
     for tok in tokens_before:
-        if not re.match(r'^[A-Za-z]\.?$', tok):  # skip single-letter initials like "W." or "M."
+        if not re.match(
+            r"^[A-Za-z]\.?$", tok
+        ):  # skip single-letter initials like "W." or "M."
             first_name_candidate = tok
             break
     if first_name_candidate is None:
@@ -24,9 +27,11 @@ def extract_first_last(name_text: str):
     first_name = first_name_candidate.strip("., ").replace(".", "")
     return first_name, last_name
 
+
 def build_new_url(first_name: str, last_name: str):
     # lower-case, keep hyphens in last name
     return f"https://education.musc.edu/MUSCApps/FacultyDirectory/{last_name.lower()}-{first_name.lower()}"
+
 
 def main(input_file="before.html", output_file="after.html"):
     in_path = Path(input_file)
@@ -57,6 +62,7 @@ def main(input_file="before.html", output_file="after.html"):
 
     with open(out_path, "w", encoding="utf-8") as f:
         f.write(str(soup))
+
 
 if __name__ == "__main__":
     main()
