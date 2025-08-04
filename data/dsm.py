@@ -84,7 +84,42 @@ def get_column_value(sheet_df, excel_row, column_name):
 
 
 def get_existing_url(sheet_df, excel_row, col_name="EXISTING URL"):
-    return get_column_value(sheet_df, excel_row, col_name)
+    """Return the first URL found in the ``EXISTING URL`` cell.
+
+    Some DSM rows occasionally contain multiple URLs separated by
+    whitespace or punctuation which can cause downstream commands to
+    break when the value is treated as a single URL.  In these cases we
+    keep only the first URL since the proposed value is the authoritative
+    target for the row.
+
+    Parameters
+    ----------
+    sheet_df: pandas.DataFrame
+        Data frame representing the worksheet.
+    excel_row: int
+        Zero-based index of the row to inspect.
+    col_name: str, optional
+        Column header to read from.  Defaults to ``"EXISTING URL"``.
+
+    Returns
+    -------
+    str
+        The first URL found in the cell or an empty string if none is
+        present.
+    """
+
+    raw_value = get_column_value(sheet_df, excel_row, col_name)
+    if not raw_value:
+        return ""
+
+    value = str(raw_value)
+    matches = re.findall(r"https?://[^\s,;]+", value, flags=re.IGNORECASE)
+    if matches:
+        if len(matches) > 1:
+            debug_print(f"Multiple URLs found in DSM cell; using first: {matches[0]}")
+        return matches[0].strip()
+
+    return value.strip()
 
 
 def get_proposed_url(sheet_df, excel_row, col_name="PROPOSED URL"):
