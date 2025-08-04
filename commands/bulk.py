@@ -2,15 +2,10 @@ import pandas as pd
 from constants import DOMAINS
 from utils.cache import (
     _cache_page_data,
-    _update_state_from_cache,
     _is_cache_valid_for_context,
 )
 from commands.common import print_help_for_command
-from data.dsm import (
-    get_latest_dsm_file,
-    load_spreadsheet,
-)
-from commands.load import _load_url_from_sheet
+from commands.load import _extract_url_and_proposed_path
 from utils.scraping import retrieve_page_data
 from utils.core import debug_print
 
@@ -234,7 +229,7 @@ def _bulk_load_url(state, domain_name, row_num):
         return False
 
     try:
-        url, _ = _load_url_from_sheet(state, domain, row_num)
+        url, _ = _extract_url_and_proposed_path(state, domain, row_num)
         if not url:
             debug_print(f"Could not find URL for {domain_name} row {row_num}")
             return False

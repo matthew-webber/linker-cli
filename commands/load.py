@@ -12,7 +12,7 @@ from utils.cache import _update_state_from_cache
 from utils.validation import validation_wrapper
 
 
-def _load_url_from_sheet(state, domain, row_num):
+def _extract_url_and_proposed_path(state, domain, row_num):
     """Load URL and proposed path for a domain/row and update state.
 
     Parameters
@@ -107,7 +107,7 @@ def cmd_load(args, state, *, validated=None):
             return
 
     try:
-        url, _ = _load_url_from_sheet(state, domain, row_num)
+        url, _ = _extract_url_and_proposed_path(state, domain, row_num)
         if not url:
             print(f"❌ Could not find URL for {domain.get('full_name')} row {row_num}")
             return
