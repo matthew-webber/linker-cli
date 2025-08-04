@@ -2,6 +2,7 @@
 import re
 from pathlib import Path
 from bs4 import BeautifulSoup
+from requests import head
 
 
 def extract_first_last(name_text: str):
@@ -33,7 +34,10 @@ def build_new_url(first_name: str, last_name: str):
     return f"https://education.musc.edu/MUSCApps/FacultyDirectory/{last_name.lower()}-{first_name.lower()}"
 
 
-def main(input_file="before.html", output_file="after.html"):
+def main(
+    input_file="update_provider_profile_urls/before.html",
+    output_file="update_provider_profile_urls/after.html",
+):
     in_path = Path(input_file)
     out_path = Path(output_file)
     if not in_path.exists():
@@ -59,6 +63,19 @@ def main(input_file="before.html", output_file="after.html"):
         a.attrs = {}
         a["href"] = new_href
         a["title"] = title_value
+
+        # check if the new href is valid and append 🔴 to the inner text if not
+        try:
+            print(f"Checking {new_href}...")
+            response = head(new_href, allow_redirects=False, timeout=5)
+            if response.status_code != 200:
+                print(f"Warning: {new_href} returned status {response.status_code}")
+                a.insert(0, "🔴")
+            else:
+                print(f"Success: {new_href} is valid")
+        except Exception as e:
+            print(f"Error checking {new_href}: {e}")
+            a.insert(0, "🔴")
 
     with open(out_path, "w", encoding="utf-8") as f:
         f.write(str(soup))
