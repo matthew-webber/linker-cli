@@ -187,7 +187,13 @@ def cmd_show(args, state):
             print(f"❌ File not found: {file_path}")
             return
         try:
-            subprocess.run(["subl", str(file_path)], check=True)
+            subprocess.run(
+                [
+                    "/Applications/Sublime Text.app/Contents/SharedSupport/bin/subl",
+                    str(file_path),
+                ],
+                check=True,
+            )
         except Exception:
             try:
                 _open_file_in_default_app(file_path)

@@ -66,16 +66,13 @@ def main(
 
         # check if the new href is valid and append 🔴 to the inner text if not
         try:
-            print(f"Checking {new_href}...")
             response = head(new_href, allow_redirects=False, timeout=5)
             if response.status_code != 200:
-                print(f"Warning: {new_href} returned status {response.status_code}")
-                a.insert(0, "🔴")
-            else:
-                print(f"Success: {new_href} is valid")
+                print(f"⚠️ Warning: {new_href} returned status {response.status_code}")
+                a.insert(0, "⚠️")
         except Exception as e:
-            print(f"Error checking {new_href}: {e}")
-            a.insert(0, "🔴")
+            print(f"❌ Error checking {new_href}: {e}")
+            a.insert(0, "❌")
 
     with open(out_path, "w", encoding="utf-8") as f:
         f.write(str(soup))
