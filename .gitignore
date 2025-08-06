@@ -69,7 +69,7 @@ coverage.xml
 *.csv
 *.xlsx
 
-migration_cache/
+migration_cache*
 reports/
 
 # temp files from updating profider profile URLs
