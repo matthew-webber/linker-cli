@@ -73,11 +73,22 @@ def extract_meta_robots(soup):
 
 
 def extract_links_from_page(soup, response, selector="#main"):
-    """Extract hyperlinks from a BeautifulSoup page container.
+    """Return the hyperlinks found within a page section.
 
-    This function now expects the page's ``soup`` and ``response`` objects to
-    be provided.  This avoids fetching the same page multiple times when
-    called from ``retrieve_page_data``.
+    Both the parsed ``soup`` and original ``response`` are required so that
+    relative URLs can be resolved without re-fetching the page. Links ending
+    in ``.pdf`` are returned separately from other hyperlinks.
+
+    Args:
+        soup: Parsed BeautifulSoup document for the page.
+        response: ``requests`` response object used to resolve relative URLs.
+        selector: CSS selector identifying the container to inspect. Defaults
+            to ``"#main"`` and falls back to the entire page if not found.
+
+    Returns:
+        tuple[list[tuple[str, str, str]], list[tuple[str, str, str]]]:
+        Two lists containing ``(text, href, status_code)`` tuples for regular
+        links and PDFs respectively.
     """
 
     debug_print(f"Using CSS selector: {selector}")

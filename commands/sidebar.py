@@ -2,7 +2,12 @@ from commands.common import print_help_for_command
 
 
 def cmd_sidebar(args, state):
-    """Toggle sidebar inclusion in page extraction."""
+    """Enable or disable sidebar processing when scraping pages.
+
+    Without arguments the current setting is toggled. Passing ``on`` or
+    ``off`` (and common truthy/falsey variants) explicitly sets the
+    ``INCLUDE_SIDEBAR`` variable.
+    """
     current_value = state.get_variable("INCLUDE_SIDEBAR")
 
     if not args:

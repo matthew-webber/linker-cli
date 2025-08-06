@@ -144,17 +144,23 @@ def count_http(url):
 
 
 def lookup_link_in_dsm(link_url, excel_data=None, state=None):
-    """
-    Look up a link URL in the DSM spreadsheet to find its proposed new location.
+    """Locate a link's destination within the DSM spreadsheet.
+
+    The function normalizes the supplied ``link_url`` and searches every
+    domain sheet for a matching entry. A regex pattern is used so the URL can
+    appear anywhere within the cell and optional trailing slashes are handled.
 
     Args:
-        link_url: The URL to look up (from a link on a page being migrated)
-        excel_data: Loaded Excel data (optional, will use state if not provided)
-        state: State object to get excel_data from if not provided
+        link_url: URL to search for in the DSM.
+        excel_data: Pre-loaded Excel data; ``state.excel_data`` is used when
+            this argument is ``None``.
+        state: State object providing ``excel_data`` when ``excel_data`` is not
+            supplied.
 
     Returns:
-        dict with keys: 'found', 'domain', 'row', 'existing_url', 'proposed_url', 'proposed_hierarchy'
-        Returns {'found': False} if not found
+        dict: Details about the match including ``domain``, ``row``,
+        ``existing_url``, ``proposed_url`` and ``proposed_hierarchy``. If no
+        match is found ``{"found": False}`` is returned.
     """
     debug_print(f"Looking up link in DSM: {link_url}")
 

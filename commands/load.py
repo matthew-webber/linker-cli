@@ -70,7 +70,12 @@ def _extract_url_and_proposed_path(state, domain, row_num):
 
 @validation_wrapper
 def cmd_load(args, state, *, validated=None):
-    """Handle the 'load' command for loading URLs from spreadsheet."""
+    """Load page information from the DSM spreadsheet.
+
+    The command resolves ``<domain> <row>`` to an existing URL and proposed
+    path, updating the relevant state variables. Cached data is loaded when
+    available to avoid re-fetching page content.
+    """
     state.reset_page_context_state()
 
     if validated:
