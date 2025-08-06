@@ -69,7 +69,6 @@ def validation_wrapper(func):
                 print(f"❌ {e}")
                 from commands.common import print_help_for_command
 
-                print_help_for_command(command_name, state)
                 return
         return func(args, state, *f_args, validated=validated, **f_kwargs)
 

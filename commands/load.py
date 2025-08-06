@@ -6,7 +6,6 @@ from data.dsm import (
 )
 from constants import DOMAINS
 from utils.core import debug_print
-from commands.common import print_help_for_command
 from utils.cache import _update_state_from_cache
 from utils.validation import validation_wrapper
 
@@ -81,36 +80,7 @@ def cmd_load(args, state, *, validated=None):
     if validated:
         domain, row_num = validated
     else:
-        if not args or len(args) < 2:
-            return print_help_for_command("load", state)
-
-        user_domain = " ".join(args[:-1])
-        row_arg = args[-1]
-
-        debug_print("Executing cmd_load with args:", args)
-
-        domain = next(
-            (
-                d
-                for d in DOMAINS
-                if d.get("full_name", "").lower() == user_domain.lower()
-            ),
-            None,
-        )
-
-        try:
-            row_num = int(row_arg)
-        except ValueError:
-            print("❌ Row number must be an integer")
-            return
-
-        if not domain:
-            print(f"❌ Domain '{user_domain}' not found.")
-            print("Available domains:")
-            for i, domain_obj in enumerate([d.get("full_name") for d in DOMAINS], 1):
-                print(f"  {i:2}. {domain_obj}")
-            return
-
+        return
     try:
         urls, _ = _extract_url_and_proposed_path(state, domain, row_num)
         if not urls:
