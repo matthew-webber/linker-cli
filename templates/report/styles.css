@@ -121,6 +121,17 @@ body {
     padding: 12px;
     border-left: 3px solid cornflowerblue;
 }
+
+.link-item:has(.type-pdf) {
+    border-left-color: #800000;
+    background-color: #fff5f5;
+}
+
+.link-item:has(.type-embed) {
+    border-left-color: #4caf50;
+    background-color: #f2f8f3;
+}
+
 .link-main {
     display: flex;
     align-items: center;

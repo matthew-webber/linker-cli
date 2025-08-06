@@ -397,8 +397,8 @@ def test_generate_consolidated_section_with_links(mock_state):
     assert "⚪" in result  # 0 status
 
     # Check for link types
-    assert "[Link]" in result
-    assert "[Pdf]" in result
+    assert "[link]" in result
+    assert "[pdf]" in result
 
     # Check for link text
     assert "External Link" in result
@@ -472,10 +472,10 @@ def test_generate_consolidated_section_sidebar_items(mock_state):
     result = report_cmd._generate_consolidated_section(mock_state)
 
     # Check for different item types
-    assert "[Sidebar Link]" in result
-    assert "[Sidebar Pdf]" in result
-    assert "[Embed]" in result
-    assert "[Sidebar Embed]" in result
+    assert "[sidebar link]" in result
+    assert "[sidebar pdf]" in result
+    assert "[embed]" in result
+    assert "[sidebar embed]" in result
 
 
 # ----- validation utils tests -----
