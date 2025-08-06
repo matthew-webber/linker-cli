@@ -110,9 +110,13 @@ def _is_cache_valid_for_context(state, cache_file):
         if not _is_metadata_structure_current(metadata):
             return False, "Metadata structure is outdated"
 
-        # Check if page_data contains meta_description
-        if not page_data or "meta_description" not in page_data:
-            return False, "Cache missing meta description data"
+        # Check if page_data contains meta_description and meta_robots
+        if (
+            not page_data
+            or "meta_description" not in page_data
+            or "meta_robots" not in page_data
+        ):
+            return False, "Cache missing meta description or robots data"
 
         current_url = state.get_variable("URL")
         current_domain = state.get_variable("DOMAIN")

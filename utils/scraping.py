@@ -61,6 +61,17 @@ def extract_meta_description(soup):
     return ""
 
 
+def extract_meta_robots(soup):
+    """Extract the meta robots directive from a BeautifulSoup object."""
+
+    meta_tag = soup.find("meta", attrs={"name": lambda x: x and x.lower() == "robots"})
+    if meta_tag and "content" in meta_tag.attrs:
+        debug_print(f"Meta robots found: {meta_tag['content']}")
+        return meta_tag["content"]
+    debug_print("No meta robots tag found")
+    return ""
+
+
 def extract_links_from_page(soup, response, selector="#main"):
     """Extract hyperlinks from a BeautifulSoup page container.
 
@@ -148,6 +159,8 @@ def retrieve_page_data(url, selector="#main", include_sidebar=False):
 
         meta_description = extract_meta_description(soup)
         debug_print(f"Meta description extracted: {meta_description}")
+        meta_robots = extract_meta_robots(soup)
+        debug_print(f"Meta robots extracted: {meta_robots}")
 
         data = {
             "links": main_links,
@@ -157,6 +170,7 @@ def retrieve_page_data(url, selector="#main", include_sidebar=False):
             "sidebar_pdfs": sidebar_pdfs,
             "sidebar_embeds": sidebar_embeds,
             "meta_description": meta_description,
+            "meta_robots": meta_robots,
         }
 
         total_main = len(main_links) + len(main_pdfs) + len(main_embeds)
@@ -181,6 +195,7 @@ def retrieve_page_data(url, selector="#main", include_sidebar=False):
             "sidebar_pdfs": [],
             "sidebar_embeds": [],
             "meta_description": "",
+            "meta_robots": "",
             "error": str(e),
             "selector_used": selector,
             "include_sidebar": include_sidebar,
