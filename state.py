@@ -12,6 +12,7 @@ class CLIState:
     def __init__(self):
         self.variables = {
             "URL": "",
+            "EXISTING_URLS": [],
             "DOMAIN": "",
             "ROW": "",
             "KANBAN_ID": "",
@@ -39,7 +40,10 @@ class CLIState:
         name = name.upper()
         if name in self.variables:
             old_value = self.variables[name]
-            self.variables[name] = str(value) if value is not None else ""
+            if isinstance(value, (list, dict)):
+                self.variables[name] = value
+            else:
+                self.variables[name] = str(value) if value is not None else ""
             debug_print(
                 f"❤️Variable {name} changed from '{old_value}' to '{self.variables[name]}'"
             )
@@ -69,7 +73,10 @@ class CLIState:
         print("=" * 50)
         for name, value in self.variables.items():
             status = "✅ SET" if value else "❌ UNSET"
-            display_value = value[:40] + "..." if len(value) > 40 else value
+            display_value = str(value)
+            display_value = (
+                display_value[:40] + "..." if len(display_value) > 40 else display_value
+            )
             print(f"{name:20} = {display_value:45} [{status}]")
         print("=" * 50)
 
@@ -98,6 +105,7 @@ class CLIState:
     def reset_page_context_state(self):
         """Reset page-specific variables to their defaults."""
         self.variables["URL"] = ""
+        self.variables["EXISTING_URLS"] = []
         self.variables["DOMAIN"] = ""
         self.variables["ROW"] = ""
         self.variables["KANBAN_ID"] = ""

@@ -177,21 +177,24 @@ def test_cmd_load_success(monkeypatch, cli_state, capsys):
     cli_state.excel_data.parse.return_value = "df"
     monkeypatch.setattr(
         load_cmd,
-        "get_existing_url",
-        lambda df, row, col_name: "http://page",
+        "get_existing_urls",
+        lambda df, row, col_name: ["http://page", "http://two"],
     )
     monkeypatch.setattr(load_cmd, "get_proposed_url", lambda df, row, col_name: "/new")
     monkeypatch.setattr(load_cmd, "_update_state_from_cache", MagicMock())
-    monkeypatch.setattr(load_cmd, "count_http", lambda url: 0)
     load_cmd.cmd_load(["Enterprise", "5"], cli_state)
     assert cli_state.get_variable("URL") == "http://page"
+    assert cli_state.get_variable("EXISTING_URLS") == [
+        "http://page",
+        "http://two",
+    ]
     assert "Loaded URL" in capsys.readouterr().out
 
 
 def test_cmd_load_invalid_args(monkeypatch, cli_state, capsys):
     """Ensure validation wrapper prevents execution with bad args."""
     cli_state.excel_data = MagicMock()
-    monkeypatch.setattr(load_cmd, "get_existing_url", MagicMock())
+    monkeypatch.setattr(load_cmd, "get_existing_urls", MagicMock())
     monkeypatch.setattr(load_cmd, "get_proposed_url", MagicMock())
     load_cmd.cmd_load(["Enterprise", "bad"], cli_state)
     out = capsys.readouterr().out

@@ -122,15 +122,22 @@ def _extract_sitecore_paths(state):
     )
 
 
-def _build_source_info_html(url, domain, row, page_data):
+def _build_source_info_html(urls, domain, row, page_data):
     """Build the source information section."""
     meta_description = page_data.get("meta_description", "")
     meta_robots = page_data.get("meta_robots", "")
 
+    url_links = "<br>".join(
+        f"<a href=\"{u}\" onclick=\"window.open(this.href, '_blank', 'noopener,noreferrer,width=1200,height=1200'); return false;\">{u}</a>"
+        for u in urls
+    )
+
+    url_label = "URLs" if len(urls) > 1 else "URL"
+
     html = f"""
         <div class="source-info">
             <h3>📍 Source Information</h3>
-            <p><strong>URL:</strong> <a href="{url}" onclick="window.open(this.href, '_blank', 'noopener,noreferrer,width=1200,height=1200'); return false;">{url}</a></p>
+            <p><strong>{url_label}:</strong> {url_links}</p>
             <p><strong>DSM Location:</strong> {domain} {row}</p>
     """
 
@@ -329,7 +336,8 @@ def _build_links_summary_html(items, state):
 
 def _generate_consolidated_section(state):
     """Generate the consolidated section with enhanced link display."""
-    url = state.get_variable("URL")
+    urls = state.get_variable("EXISTING_URLS") or []
+    url = urls[0] if urls else state.get_variable("URL")
     domain = state.get_variable("DOMAIN")
     row = state.get_variable("ROW")
 
@@ -345,7 +353,9 @@ def _generate_consolidated_section(state):
         escaped_proposed_js,
     ) = _extract_sitecore_paths(state)
 
-    source_html = _build_source_info_html(url, domain, row, state.current_page_data)
+    source_html = _build_source_info_html(
+        urls or [url], domain, row, state.current_page_data
+    )
     hierarchy_html = _build_hierarchy_html(
         current_root,
         existing_segments,
