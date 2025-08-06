@@ -141,13 +141,25 @@ def _generate_consolidated_section(state):
             escaped_meta = escaped_meta[:200] + "..."
 
         html += f"""
-            <p><strong>Meta Description:</strong> 
+            <p><strong>Meta Description:</strong>
                 <button onclick="copyMetaDescription(event)" class="copy-btn" style="display: inline-flex;" title="Copy meta description">📋</button>
                 <span id="meta-desc-text">{escaped_meta}</span>
             </p>"""
     else:
         html += """
             <p><strong>Meta Description:</strong> <em>Not available</em></p>"""
+
+    # Add robots directives line
+    meta_robots = state.current_page_data.get("meta_robots", "")
+    robots_content = meta_robots.lower()
+    noindex_style = (
+        "color: red; font-weight: bold;" if "noindex" in robots_content else ""
+    )
+    nofollow_style = (
+        "color: red; font-weight: bold;" if "nofollow" in robots_content else ""
+    )
+    html += f"""
+            <p><span style="{noindex_style}">noindex</span>, <span style="{nofollow_style}">nofollow</span></p>"""
 
     html += f"""
         </div>
