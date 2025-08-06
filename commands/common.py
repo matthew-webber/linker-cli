@@ -127,7 +127,12 @@ def display_domains():
 
 
 def cmd_debug(args, state):
-    """Toggle debug mode."""
+    """Toggle debug output or set it explicitly.
+
+    With no arguments the current debug flag is inverted. Supplying
+    ``on``/``off`` (or truthy equivalents) forces the flag to the
+    desired state.
+    """
     current_debug = state.get_variable("DEBUG")
 
     if not args:
