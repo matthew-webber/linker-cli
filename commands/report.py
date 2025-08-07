@@ -252,20 +252,20 @@ def _build_link_item_html(item_type, item, state):
     """Build the HTML for a single link/resource entry."""
     if item_type in {"embed", "sidebar_embed"}:
         from html import escape
-        import json
 
         title, src = item
         debug_print(f"Processing embed: {title} ({src})")
         escaped_title = escape(title)
         escaped_src = escape(src, quote=True)
-        js_src = json.dumps(src)
-        js_title = json.dumps(title)
+        # Properly escape for HTML attributes - escape quotes and backslashes
+        attr_safe_src = escape(src, quote=True).replace("'", "&#39;")
+        attr_safe_title = escape(title, quote=True).replace("'", "&#39;")
 
         return f"""
                 <div class="link-item">
                     <div class="link-main">
                         🎬 <a href="{escaped_src}" target="_blank">{escaped_title}</a>
-                        <button class="copy-btn" onclick="copyEmbedToClipboard(event, {js_src}, {js_title})" title="Copy embed HTML">
+                        <button class="copy-btn" onclick="copyEmbedToClipboard(event, '{attr_safe_src}', '{attr_safe_title}')" title="Copy embed HTML">
                             <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor">
                                 <path d="M16 1H4c-1.1 0-2 .9-2 2v14h2V3h12V1zm3 4H8c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h11c1.1 0 2-.9 2-2V7c0-1.1-.9-2-2-2zm0 16H8V7h11v14z"/>
                             </svg>
