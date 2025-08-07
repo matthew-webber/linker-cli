@@ -181,6 +181,9 @@ def test_cmd_load_success(monkeypatch, cli_state, capsys):
         lambda df, row, col_name: ["http://page", "http://two"],
     )
     monkeypatch.setattr(load_cmd, "get_proposed_url", lambda df, row, col_name: "/new")
+    monkeypatch.setattr(
+        load_cmd, "get_column_value", lambda df, row, col_name: "Cancer"
+    )
     monkeypatch.setattr(load_cmd, "_update_state_from_cache", MagicMock())
     load_cmd.cmd_load(["Enterprise", "5"], cli_state)
     assert cli_state.get_variable("URL") == "http://page"
@@ -188,6 +191,7 @@ def test_cmd_load_success(monkeypatch, cli_state, capsys):
         "http://page",
         "http://two",
     ]
+    assert cli_state.get_variable("RESEARCH_TAXONOMY") == "Cancer"
     assert "Loaded URL" in capsys.readouterr().out
 
 
@@ -353,6 +357,22 @@ def test_generate_consolidated_section_with_proposed_path(mock_state):
     assert "redesign" in result
     assert "medical" in result
     assert "surgery" in result
+
+
+def test_generate_consolidated_section_research_taxonomy(mock_state):
+    """Research taxonomy values should appear when provided."""
+    mock_state.current_page_data = {"links": []}
+    mock_state.get_variable.side_effect = lambda var: {
+        "URL": "https://example.com",
+        "DOMAIN": "Test",
+        "ROW": "1",
+        "PROPOSED_PATH": "",
+        "RESEARCH_TAXONOMY": "Oncology; Cardiology",
+    }.get(var, "")
+
+    result = report_cmd._generate_consolidated_section(mock_state)
+    assert "Research Taxonomy" in result
+    assert "Oncology; Cardiology" in result
 
 
 def test_generate_consolidated_section_content_hub_hack(mock_state):

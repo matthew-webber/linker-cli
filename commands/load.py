@@ -3,6 +3,7 @@ from data.dsm import (
     load_spreadsheet,
     get_existing_urls,
     get_proposed_url,
+    get_column_value,
 )
 from constants import DOMAINS
 from utils.core import debug_print
@@ -50,6 +51,9 @@ def _extract_url_and_proposed_path(state, domain, row_num):
     proposed = get_proposed_url(
         df, row_num - df_header_row, col_name=proposed_url_header
     )
+    research_taxonomy = get_column_value(
+        df, row_num - df_header_row, "RESEARCH TAXONOMY"
+    )
 
     if not urls:
         return None, None
@@ -59,6 +63,7 @@ def _extract_url_and_proposed_path(state, domain, row_num):
     state.set_variable("PROPOSED_PATH", proposed)
     state.set_variable("DOMAIN", domain.get("full_name", "Domain Placeholder"))
     state.set_variable("ROW", str(row_num))
+    state.set_variable("RESEARCH_TAXONOMY", research_taxonomy)
 
     _update_state_from_cache(
         state, url=urls[0], domain=domain.get("full_name"), row=str(row_num)
