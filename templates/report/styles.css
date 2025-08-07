@@ -78,14 +78,19 @@ body {
 .links-summary {
     margin-bottom: 30px;
 }
-.source-info h3,
-.hierarchy-info h3,
-.links-summary h3 {
+
+h3 {
     color: #333;
     border-bottom: 2px solid cornflowerblue;
     padding-bottom: 8px;
     margin-bottom: 16px;
 }
+
+.research-taxonomy,
+.source-info {
+    flex: 1;
+}
+
 .hierarchy-comparison {
     display: flex;
     gap: 30px;

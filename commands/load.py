@@ -55,6 +55,12 @@ def _extract_url_and_proposed_path(state, domain, row_num):
         df, row_num - df_header_row, "RESEARCH TAXONOMY"
     )
 
+    # sort the research taxonomy values alphabetically and join with commas
+    if research_taxonomy:
+        research_taxonomy = ", ".join(
+            sorted(map(str.strip, research_taxonomy.split(",")))
+        )
+
     if not urls:
         return None, None
 

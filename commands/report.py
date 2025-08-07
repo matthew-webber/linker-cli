@@ -2,6 +2,7 @@ import re
 import sys
 import shutil
 import json
+from html import escape
 from pathlib import Path
 from io import StringIO
 from datetime import datetime
@@ -179,7 +180,9 @@ def _build_research_taxonomy_html(research_taxonomy):
     return f"""
         <div class=\"research-taxonomy\">
             <h3>🔬 Research Taxonomy</h3>
-            <p>{research_taxonomy}</p>
+            <ul>
+                {''.join(f'<li>{escape(t.strip())}</li>' for t in research_taxonomy.split(','))}
+            </ul>
         </div>
     """
 
@@ -264,7 +267,6 @@ def _collect_page_items(page_data):
 def _build_link_item_html(item_type, item, state):
     """Build the HTML for a single link/resource entry."""
     if item_type in {"embed", "sidebar_embed"}:
-        from html import escape
 
         title, src = item
         debug_print(f"Processing embed: {title} ({src})")
@@ -409,8 +411,10 @@ def _generate_consolidated_section(state):
 
     html = f"""
     <div class="consolidated-section">
-        {source_html}
-        {taxonomy_html}
+        <div style="display: flex; gap: 20px;">
+            {source_html}
+            {taxonomy_html}
+        </div>
         {hierarchy_html}
         {links_html}
     </div>
