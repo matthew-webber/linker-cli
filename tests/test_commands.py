@@ -2,6 +2,7 @@ import os
 from pathlib import Path
 from unittest.mock import MagicMock
 import pytest
+import pandas as pd
 
 # ensure commands module is importable from repo root
 import sys
@@ -337,6 +338,25 @@ def test_generate_consolidated_section_meta_robots(mock_state):
     # Should have red styling for both noindex and nofollow
     assert 'style="color: red; font-weight: bold;">noindex</span>' in result
     assert 'style="color: red; font-weight: bold;">nofollow</span>' in result
+
+
+def test_generate_consolidated_section_research_taxonomy(mock_state):
+    """Ensure Research Taxonomy section is included when data is present."""
+    mock_state.current_page_data = {"links": []}
+    df = pd.DataFrame({"RESEARCH TAXONOMY": ["Cell Biology"]})
+    excel = MagicMock()
+    excel.parse.return_value = df
+    mock_state.excel_data = excel
+    mock_state.get_variable.side_effect = lambda var: {
+        "URL": "https://example.com",
+        "DOMAIN": "Research",
+        "ROW": "5",
+        "PROPOSED_PATH": "",
+    }.get(var, "")
+
+    result = report_cmd._generate_consolidated_section(mock_state)
+    assert "Research Taxonomy" in result
+    assert "Cell Biology" in result
 
 
 def test_generate_consolidated_section_with_proposed_path(mock_state):

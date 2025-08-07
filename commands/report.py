@@ -14,6 +14,8 @@ from commands.load import cmd_load
 from utils.core import display_page_data
 from utils.core import output_internal_links_analysis_detail
 from utils.sitecore import print_hierarchy, print_proposed_hierarchy
+from constants import DOMAINS
+from data.dsm import get_column_value
 
 
 def _capture_migrate_page_mapping_output(state):
@@ -169,6 +171,21 @@ def _build_source_info_html(urls, domain, row, page_data):
     """
 
     return html
+
+
+def _build_research_taxonomy_html(taxonomy):
+    """Build the Research Taxonomy section if data is available."""
+    if not taxonomy:
+        return ""
+    from html import escape
+
+    escaped = escape(taxonomy)
+    return f"""
+        <div class="research-taxonomy">
+            <h3>🔬 Research Taxonomy</h3>
+            <p>{escaped}</p>
+        </div>
+    """
 
 
 def _build_hierarchy_html(
@@ -377,10 +394,28 @@ def _generate_consolidated_section(state):
         proposed_segments,
         escaped_proposed_js,
     ) = _extract_sitecore_paths(state)
+    research_taxonomy = ""
+    if domain and row and state.excel_data:
+        try:
+            domain_info = next(
+                (d for d in DOMAINS if d.get("full_name") == domain), None
+            )
+            if domain_info:
+                df = state.excel_data.parse(
+                    sheet_name=domain_info.get("worksheet_name"),
+                    header=domain_info.get("worksheet_header_row", 4),
+                )
+                df_header_row = domain_info.get("worksheet_header_row", 4) + 2
+                research_taxonomy = get_column_value(
+                    df, int(row) - df_header_row, "RESEARCH TAXONOMY"
+                )
+        except Exception:
+            research_taxonomy = ""
 
     source_html = _build_source_info_html(
         urls or [url], domain, row, state.current_page_data
     )
+    taxonomy_html = _build_research_taxonomy_html(research_taxonomy)
     hierarchy_html = _build_hierarchy_html(
         current_root,
         existing_segments,
@@ -395,6 +430,7 @@ def _generate_consolidated_section(state):
     html = f"""
     <div class="consolidated-section">
         {source_html}
+        {taxonomy_html}
         {hierarchy_html}
         {links_html}
     </div>
