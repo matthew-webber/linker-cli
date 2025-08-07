@@ -103,6 +103,10 @@ def extract_links_from_page(soup, response, selector="#main"):
     links = []
     pdfs = []
     for a in anchors:
+        if a.get("href") == "#" and a.has_attr("data-video"):
+            debug_print("Skipping anchor tag treated as Vimeo embed")
+            continue
+
         text = a.get_text(strip=True)
         href = urljoin(response.url, a["href"])
         debug_print(
@@ -119,6 +123,12 @@ def extract_links_from_page(soup, response, selector="#main"):
 
 
 def extract_embeds_from_page(soup, selector="#main"):
+    """Return Vimeo embeds found on the page.
+
+    Embeds are represented in the markup as ``<a href="#" data-video="..." data-title="...">``
+    elements, which are transformed into iframes by client-side JavaScript.
+    """
+
     embeds = []
     container = soup.select_one(selector)
     if not container:
@@ -126,14 +136,16 @@ def extract_embeds_from_page(soup, selector="#main"):
             f"Warning: No element found matching selector '{selector}', falling back to entire page for embeds"
         )
         container = soup
-    for iframe in container.find_all("iframe", src=True):
-        src = iframe.get("src", "")
-        if "vimeo" in src.lower():
-            title = (
-                iframe.get("title", "") or iframe.get_text(strip=True) or "Vimeo Video"
-            )
-            embeds.append(("vimeo", title, src))
-            debug_print(f"Found Vimeo embed: {title}")
+
+    for a in container.find_all("a", href="#"):
+        video_id = a.get("data-video")
+        if not video_id:
+            continue
+        title = a.get("data-title", "") or a.get_text(strip=True) or "Vimeo Video"
+        src = f"https://player.vimeo.com/video/{video_id}"
+        embeds.append((title, src))
+        debug_print(f"Found Vimeo embed: {title}")
+
     return embeds
 
 

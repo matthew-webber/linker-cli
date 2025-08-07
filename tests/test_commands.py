@@ -458,8 +458,8 @@ def test_generate_consolidated_section_sidebar_items(mock_state):
     mock_state.current_page_data = {
         "sidebar_links": [("Sidebar Link", "https://sidebar.com", 200)],
         "sidebar_pdfs": [("Sidebar PDF", "https://example.com/sidebar.pdf", 200)],
-        "embeds": [("Main Embed", "https://embed.com", 200)],
-        "sidebar_embeds": [("Sidebar Embed", "https://sidebar-embed.com", 200)],
+        "embeds": [("Main Embed", "https://player.vimeo.com/video/12345")],
+        "sidebar_embeds": [("Sidebar Embed", "https://player.vimeo.com/video/67890")],
     }
     mock_state.get_variable.side_effect = lambda var: {
         "URL": "https://example.com",
@@ -476,6 +476,7 @@ def test_generate_consolidated_section_sidebar_items(mock_state):
     assert "[sidebar pdf]" in result
     assert "[embed]" in result
     assert "[sidebar embed]" in result
+    assert "copyEmbedToClipboard" in result
 
 
 # ----- validation utils tests -----
