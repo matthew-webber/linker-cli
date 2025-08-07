@@ -128,11 +128,11 @@ def extract_embeds_from_page(soup, selector="#main"):
         container = soup
     for iframe in container.find_all("iframe", src=True):
         src = iframe.get("src", "")
-        if "vimeo" in src.lower():
+        if "player.vimeo.com" in src.lower():
             title = (
                 iframe.get("title", "") or iframe.get_text(strip=True) or "Vimeo Video"
             )
-            embeds.append(("vimeo", title, src))
+            embeds.append((title, src))
             debug_print(f"Found Vimeo embed: {title}")
     return embeds
 
