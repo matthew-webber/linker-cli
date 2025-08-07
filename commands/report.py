@@ -250,6 +250,31 @@ def _collect_page_items(page_data):
 
 def _build_link_item_html(item_type, item, state):
     """Build the HTML for a single link/resource entry."""
+    if item_type in {"embed", "sidebar_embed"}:
+        from html import escape
+        import json
+
+        title, src = item
+        debug_print(f"Processing embed: {title} ({src})")
+        escaped_title = escape(title)
+        escaped_src = escape(src, quote=True)
+        js_src = json.dumps(src)
+        js_title = json.dumps(title)
+
+        return f"""
+                <div class="link-item">
+                    <div class="link-main">
+                        🎬 <a href="{escaped_src}" target="_blank">{escaped_title}</a>
+                        <button class="copy-btn" onclick="copyEmbedToClipboard(event, {js_src}, {js_title})" title="Copy embed HTML">
+                            <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor">
+                                <path d="M16 1H4c-1.1 0-2 .9-2 2v14h2V3h12V1zm3 4H8c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h11c1.1 0 2-.9 2-2V7c0-1.1-.9-2-2-2zm0 16H8V7h11v14z"/>
+                            </svg>
+                        </button>
+                        <span class="item-type type-{item_type.replace('_', ' ')}">[{item_type.replace('_', ' ')}]</span>
+                    </div>
+                </div>
+            """
+
     text, href, status = item
     debug_print(f"Processing item: {item_type} - {text} ({href}) with status {status}")
     try:

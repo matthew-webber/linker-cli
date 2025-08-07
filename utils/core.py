@@ -205,7 +205,7 @@ def display_page_data(data):
     print(f"🎬 VIMEO EMBEDS: {len(embeds)}")
     if embeds:
         print("-" * 40)
-        for i, (embed_type, title, src) in enumerate(embeds, 1):
+        for i, (title, src) in enumerate(embeds, 1):
             print(f"{i:2}. [VIMEO] {title[:50]}")
             print(f"    → {src}")
 
@@ -215,7 +215,7 @@ def display_page_data(data):
         print()
         print(f"🎬 SIDEBAR VIMEO EMBEDS: {len(sidebar_embeds)}")
         print("-" * 40)
-        for i, (embed_type, title, src) in enumerate(sidebar_embeds, len(embeds) + 1):
+        for i, (title, src) in enumerate(sidebar_embeds, len(embeds) + 1):
             print(f"{i:2}.│[VIMEO] {title[:50]}")
             print(f"   │→ {src}")
 
