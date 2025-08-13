@@ -317,7 +317,7 @@ def _build_link_item_html(item_type, item, state):
     link_kind = "contact" if is_contact_link else "pdf"
     if is_contact_link or is_pdf_link:
         anchor_copy_button = f"""
-                        <button class="copy-anchor-btn" onclick="copyAnchorToClipboard(event, '{copy_value}', '{text}', '{link_kind}')" title="Copy as HTML anchor">
+                        <button class="copy-anchor-btn {link_kind}" onclick="copyAnchorToClipboard(event, '{copy_value}', '{text}', '{link_kind}')" title="Copy as HTML anchor">
                             &lt;/&gt;
                         </button>"""
 
