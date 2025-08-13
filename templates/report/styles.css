@@ -178,14 +178,14 @@ h3 {
     align-items: center;
     font-size: 12px;
     font-weight: bold;
+}
 
-    .pdf {
-        background: #800000;
-    }
+.copy-anchor-btn.pdf {
+    background: #830202;
+}
 
-    .contact {
-        background: mediumseagreen;
-    }
+.copy-anchor-btn.contact {
+    background: mediumseagreen;
 }
 
 .copy-anchor-btn:hover {
