@@ -17,29 +17,6 @@ from utils.core import output_internal_links_analysis_detail
 from utils.sitecore import print_hierarchy, print_proposed_hierarchy
 
 
-def _capture_migrate_page_mapping_output(state):
-    """Capture the output from migrate page mapping functionality."""
-    url = state.get_variable("URL")
-    if not url:
-        return "❌ No URL set for page mapping."
-
-    output = StringIO()
-    old_stdout = sys.stdout
-    sys.stdout = output
-
-    try:
-        print_hierarchy(url)
-        proposed = state.get_variable("PROPOSED_PATH")
-        if proposed:
-            print_proposed_hierarchy(url, proposed)
-        else:
-            print("No proposed path set. Use 'set PROPOSED_PATH <path>' to set it.")
-    finally:
-        sys.stdout = old_stdout
-
-    return output.getvalue()
-
-
 def _capture_output(func, *args, **kwargs):
     """Capture stdout from a function call and return it as a string."""
     old_stdout = sys.stdout
@@ -452,7 +429,6 @@ def _generate_html_report(
     domain,
     row,
     show_page_output,
-    migrate_output,
     links_output,
     consolidated_output,
     kanban_id=None,
@@ -480,7 +456,6 @@ def _generate_html_report(
         kanban_url=kanban_html,
         consolidated_output=consolidated_output,
         show_page_output=show_page_output.replace("<", "&lt;").replace(">", "&gt;"),
-        migrate_output=migrate_output.replace("<", "&lt;").replace(">", "&gt;"),
         links_output=links_output.replace("<", "&lt;").replace(">", "&gt;"),
         timestamp=timestamp,
     )
@@ -569,9 +544,6 @@ def _generate_report(state, prompt_open=True, force_regenerate=False):
     else:
         show_page_output = "❌ No page data available. Run 'check' first."
 
-    print("  ▶ Capturing migration mapping...")
-    migrate_output = _capture_migrate_page_mapping_output(state)
-
     print("  ▶ Capturing links analysis...")
     links_output = _capture_output(output_internal_links_analysis_detail, state)
 
@@ -584,7 +556,6 @@ def _generate_report(state, prompt_open=True, force_regenerate=False):
         domain,
         row,
         show_page_output,
-        migrate_output,
         links_output,
         consolidated_output,
         kanban_id,
