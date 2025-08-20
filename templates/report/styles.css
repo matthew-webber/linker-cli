@@ -190,6 +190,15 @@ body {
     font-style: italic;
 }
 
+.link-url {
+    margin-top: 4px;
+    margin-left: 24px;
+    font-family: 'Monaco', 'Menlo', 'Ubuntu Mono', monospace;
+    font-size: 13px;
+    color: #555;
+    overflow-wrap: anywhere;
+}
+
 @media (max-width: 768px) {
     .hierarchy-comparison {
         flex-direction: column;

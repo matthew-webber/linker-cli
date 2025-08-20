@@ -1,5 +1,11 @@
 import json
-from commands.report import _build_sitecore_nav_js
+from commands.report import (
+    _build_sitecore_nav_js,
+    _format_display_url,
+    _generate_consolidated_section,
+)
+from state import CLIState
+from unittest.mock import patch
 
 """
 Core Functionality Tests:
@@ -344,3 +350,47 @@ class TestBuildSitecoreNavJs:
             # Find the line and ensure it's properly terminated
             stmt_line = next(line for line in lines if stmt in line)
             assert stmt_line.strip().endswith(";")
+
+
+class TestFormatDisplayUrl:
+    """Tests for the _format_display_url helper."""
+
+    def test_truncates_and_preserves_ends(self):
+        long_url = "https://example.com/" + "a" * 80 + "/file"
+        formatted = _format_display_url(long_url, max_length=60)
+        assert formatted.startswith("https://example.com/")
+        assert formatted.endswith("/file")
+        assert "..." in formatted
+        assert len(formatted) <= 60
+
+
+class TestGenerateConsolidatedSection:
+    """Tests for consolidated section generation."""
+
+    def test_internal_hierarchy_only_for_internal_pages(self):
+        state = CLIState()
+        state.set_variable("URL", "https://musckids.org/page")
+        state.current_page_data = {
+            "links": [
+                ("Internal", "https://musckids.org/page", 200),
+                ("Phone", "tel:1234567890", 0),
+                ("Email", "mailto:test@example.com", 0),
+            ],
+            "pdfs": [("PDF", "https://musckids.org/doc.pdf", 200)],
+        }
+
+        with patch(
+            "utils.sitecore.get_current_sitecore_root", return_value="Root"
+        ), patch(
+            "utils.sitecore.get_proposed_sitecore_root", return_value="Root"
+        ), patch(
+            "data.dsm.lookup_link_in_dsm",
+            return_value={"proposed_hierarchy": {"segments": ["Page"], "root": "Root"}},
+        ):
+            html = _generate_consolidated_section(state)
+
+        # Only the internal page link should have hierarchy information
+        assert html.count("internal-hierarchy") == 1
+
+        # All items should display their URL strings
+        assert html.count('class="link-url"') == 4

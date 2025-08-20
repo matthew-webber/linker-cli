@@ -249,10 +249,21 @@ def _generate_consolidated_section(state):
 
             parsed = urlparse(href)
             href_hostname = parsed.hostname
+            href_scheme = parsed.scheme
             internal_domains = set(DOMAIN_MAPPING.keys())
-            is_internal = not href_hostname or href_hostname in internal_domains
+
+            is_contact_link = href.startswith(("tel:", "mailto:"))
+            is_pdf_link = href.lower().endswith(".pdf")
+
+            is_internal_page = (
+                (href_scheme in ("http", "https", ""))
+                and not is_contact_link
+                and not is_pdf_link
+                and (not href_hostname or href_hostname in internal_domains)
+            )
+
             internal_hierarchy = ""
-            if is_internal:
+            if is_internal_page:
                 try:
                     from data.dsm import lookup_link_in_dsm
 
@@ -275,8 +286,6 @@ def _generate_consolidated_section(state):
                         "<div class='internal-hierarchy'>   → Sites</div>"
                     )
 
-            is_contact_link = href.startswith(("tel:", "mailto:"))
-            is_pdf_link = href.lower().endswith(".pdf")
             anchor_copy_button = ""
             link_kind = "contact" if is_contact_link else "pdf"
             if is_contact_link or is_pdf_link:
@@ -284,6 +293,8 @@ def _generate_consolidated_section(state):
                         <button class="copy-anchor-btn" onclick="copyAnchorToClipboard(event, '{copy_value}', '{text}', '{link_kind}')" title="Copy as HTML anchor">
                             &lt;/&gt;
                         </button>"""
+
+            display_url = _format_display_url(href)
 
             html += f"""
                 <div class="link-item">
@@ -297,6 +308,7 @@ def _generate_consolidated_section(state):
                         <span class="item-type">[{item_type.replace('_', ' ').title()}]</span>
                     </div>
                     {internal_hierarchy}
+                    <div class="link-url">{display_url}</div>
                 </div>
             """
 
@@ -327,6 +339,17 @@ def _get_copy_value(href):
         return parsed.path
     else:
         return href
+
+
+def _format_display_url(url: str, max_length: int = 60) -> str:
+    """Format a URL for display, truncating the middle if it is too long."""
+    from html import escape
+
+    escaped = escape(url)
+    if len(escaped) <= max_length:
+        return escaped
+    half = (max_length - 3) // 2
+    return f"{escaped[:half]}...{escaped[-half:]}"
 
 
 def _get_report_template_dir():
