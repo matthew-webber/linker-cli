@@ -448,6 +448,51 @@ def test_generate_consolidated_section_contact_links(mock_state):
     assert "copyAnchorToClipboard" in result
 
 
+def test_internal_hierarchy_only_for_internal_pages(mock_state):
+    mock_state.current_page_data = {
+        "links": [
+            ("Internal Page", "https://web.musc.edu/page", 200),
+            ("Internal PDF", "https://web.musc.edu/file.pdf", 200),
+            ("Phone", "tel:+18005551234", 200),
+            ("Email", "mailto:test@example.com", 200),
+        ]
+    }
+    mock_state.get_variable.side_effect = lambda var: {
+        "URL": "https://web.musc.edu",
+        "DOMAIN": "Test",
+        "ROW": "1",
+        "PROPOSED_PATH": "",
+    }.get(var, "")
+    mock_state.excel_data = None
+
+    result = report_cmd._generate_consolidated_section(mock_state)
+    assert result.count("internal-hierarchy") == 1
+
+
+def test_link_item_shows_truncated_url(mock_state):
+    long_tail = "a" * 100
+    long_url = f"https://web.musc.edu/{long_tail}/final"
+    mock_state.current_page_data = {"links": [("Long", long_url, 200)]}
+    mock_state.get_variable.side_effect = lambda var: {
+        "URL": "https://web.musc.edu",
+        "DOMAIN": "Test",
+        "ROW": "1",
+        "PROPOSED_PATH": "",
+    }.get(var, "")
+    mock_state.excel_data = None
+
+    result = report_cmd._generate_consolidated_section(mock_state)
+    import re
+
+    m = re.search(r'<div class="link-url">([^<]+)</div>', result)
+    assert m
+    displayed = m.group(1)
+    assert displayed.startswith("https://web.musc.edu/")
+    assert displayed.endswith("/final")
+    assert "..." in displayed
+    assert long_tail not in displayed
+
+
 def test_generate_consolidated_section_exception_handling(mock_state, monkeypatch):
     """Test that exceptions in sitecore utilities are handled gracefully."""
 
