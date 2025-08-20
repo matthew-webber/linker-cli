@@ -206,6 +206,15 @@ h3 {
     font-style: italic;
 }
 
+.link-url {
+    margin-top: 4px;
+    margin-left: 24px;
+    font-size: 13px;
+    color: #555;
+    word-break: break-all;
+    font-family: monospace;
+}
+
 @media (max-width: 768px) {
     .hierarchy-comparison {
         flex-direction: column;

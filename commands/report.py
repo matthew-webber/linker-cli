@@ -241,18 +241,25 @@ def _collect_page_items(page_data):
     return items
 
 
+def _truncate_url_display(url: str, max_length: int = 80) -> str:
+    """Return a shortened representation of a URL for display."""
+    if len(url) <= max_length:
+        return escape(url)
+
+    half = (max_length - 3) // 2
+    return escape(url[:half] + "..." + url[-half:])
+
+
 def _build_link_item_html(item_type, item, state):
     """Build the HTML for a single link/resource entry."""
     if item_type in {"embed", "sidebar_embed"}:
-
         title, src = item
         debug_print(f"Processing embed: {title} ({src})")
         escaped_title = escape(title)
         escaped_src = escape(src, quote=True)
-        # Properly escape for HTML attributes - escape quotes and backslashes
         attr_safe_src = escape(src, quote=True).replace("'", "&#39;")
         attr_safe_title = escape(title, quote=True).replace("'", "&#39;")
-
+        url_display = _truncate_url_display(src)
         return f"""
                 <div class="link-item">
                     <div class="link-main">
@@ -264,6 +271,7 @@ def _build_link_item_html(item_type, item, state):
                         </button>
                         <span class="item-type type-{item_type.replace('_', ' ')}">[{item_type.replace('_', ' ')}]</span>
                     </div>
+                    <div class="link-url">{url_display}</div>
                 </div>
             """
 
@@ -286,15 +294,24 @@ def _build_link_item_html(item_type, item, state):
 
     copy_value = _get_copy_value(href)
 
+    is_contact_link = href.startswith(("tel:", "mailto:"))
+    is_pdf_link = href.lower().endswith(".pdf")
+
     from urllib.parse import urlparse
     from constants import DOMAIN_MAPPING
 
     parsed = urlparse(href)
     href_hostname = parsed.hostname
+    scheme = parsed.scheme
     internal_domains = set(DOMAIN_MAPPING.keys())
-    is_internal = not href_hostname or href_hostname in internal_domains
+    is_internal_page = (
+        not is_contact_link
+        and not is_pdf_link
+        and (scheme in ("http", "https") or not scheme)
+        and (not href_hostname or href_hostname in internal_domains)
+    )
     internal_hierarchy = ""
-    if is_internal:
+    if is_internal_page:
         try:
             from data.dsm import lookup_link_in_dsm
 
@@ -311,8 +328,6 @@ def _build_link_item_html(item_type, item, state):
         except Exception:
             internal_hierarchy = "<div class='internal-hierarchy'>   → Sites</div>"
 
-    is_contact_link = href.startswith(("tel:", "mailto:"))
-    is_pdf_link = href.lower().endswith(".pdf")
     anchor_copy_button = ""
     link_kind = "contact" if is_contact_link else "pdf"
     if is_contact_link or is_pdf_link:
@@ -321,6 +336,7 @@ def _build_link_item_html(item_type, item, state):
                             &lt;/&gt;
                         </button>"""
 
+    url_display = _truncate_url_display(href)
     return f"""
                 <div class="link-item">
                     <div class="link-main">
@@ -333,6 +349,7 @@ def _build_link_item_html(item_type, item, state):
                         <span class="item-type type-{item_type.replace('_', ' ')}">[{item_type.replace('_', ' ')}]</span>
                     </div>
                     {internal_hierarchy}
+                    <div class="link-url">{url_display}</div>
                 </div>
             """
 
