@@ -127,7 +127,7 @@ def _build_source_info_html(urls, domain, row, page_data):
             escaped_meta = escaped_meta[:200] + "..."
         html += f"""
             <p><strong>Meta Description:</strong>
-                <button onclick="copyMetaDescription(event)" class="copy-btn" style="display: inline-flex;" title="Copy meta description">📋</button>
+                <button id="copy-meta-btn" onclick="copyMetaDescription(event)" class="copy-btn" style="display: inline-flex;" title="Copy meta description (F1)">📋</button>
                 <span id="meta-desc-text">{escaped_meta}</span>
             </p>"""
     else:
@@ -198,7 +198,7 @@ def _build_hierarchy_html(
                 <div class="proposed-hierarchy">
                     <h4>
                         Proposed Structure
-                        <button class="copy-btn" onclick="copyToClipboard(event, `{escaped_proposed_js}`)" title="Copy Sitecore navigation JS">
+                        <button id="copy-proposed-btn" class="copy-btn" onclick="copyToClipboard(event, `{escaped_proposed_js}`)" title="Copy Sitecore navigation JS (F2)">
                             <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor"><path d="M16 1H4c-1.1 0-2 .9-2 2v14h2V3h12V1zm3 4H8c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h11c1.1 0 2-.9 2-2V7c0-1.1-.9-2-2-2zm0 16H8V7h11v14z"/></svg>
                         </button>
                     </h4>

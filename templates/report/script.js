@@ -1,3 +1,41 @@
+document.addEventListener('keydown', function (e) {
+  if (e.key === 'F1') {
+    e.preventDefault();
+    const metaBtn = document.getElementById('copy-meta-btn');
+    if (metaBtn) {
+      metaBtn.click();
+      showToast('Meta description copied to clipboard!');
+    }
+  } else if (e.key === 'F2') {
+    e.preventDefault();
+    const proposedBtn = document.getElementById('copy-proposed-btn');
+    if (proposedBtn) {
+      proposedBtn.click();
+      showToast('Proposed structure JS copied to clipboard!');
+    }
+  }
+});
+
+function showToast(message) {
+  const toast = document.createElement('div');
+  toast.className = 'toast';
+  toast.textContent = message;
+  document.body.appendChild(toast);
+
+  // Animate in
+  setTimeout(() => {
+    toast.classList.add('show');
+  }, 10);
+
+  // Animate out and remove
+  setTimeout(() => {
+    toast.classList.remove('show');
+    setTimeout(() => {
+      document.body.removeChild(toast);
+    }, 500);
+  }, 3000);
+}
+
 function copyToClipboard(e, text) {
   navigator.clipboard
     .writeText(text)
