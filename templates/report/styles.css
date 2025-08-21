@@ -210,7 +210,7 @@ h3 {
     margin-top: 4px;
     margin-left: 24px;
     font-family: 'Monaco', 'Menlo', 'Ubuntu Mono', monospace;
-    font-size: 13px;
+    font-size: 11px;
     color: #555;
     overflow-wrap: anywhere;
     /* word-break: break-all; // possibly re-enable - from a merge conflict */
