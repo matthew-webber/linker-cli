@@ -121,7 +121,12 @@ DOMAIN_MAPPING = {
 
 
 def get_commands(state):
-    """Dynamically load and return the COMMANDS dictionary."""
+    """Build a mapping of command names to callable handlers.
+
+    The command modules are imported lazily to keep start-up fast. Each
+    command name is associated with a ``lambda`` that injects the shared
+    ``state`` object when invoking the real implementation.
+    """
     from commands.core import (
         cmd_links,
         cmd_open,
@@ -135,6 +140,7 @@ def get_commands(state):
     from commands.common import cmd_help, cmd_debug
     from commands.bulk import cmd_bulk_check
     from commands.check import cmd_check
+    from commands.profile import cmd_profile
 
     return {
         "bulk_check": lambda args: cmd_bulk_check(args, state),
@@ -148,6 +154,7 @@ def get_commands(state):
         "open": lambda args: cmd_open(args, state),
         "report": lambda args: cmd_report(args, state),
         "set": lambda args: cmd_set(args, state),
+        "profile": lambda args: cmd_profile(args, state),
         "sidebar": lambda args: cmd_sidebar(args, state),
         "show": lambda args: cmd_show(args, state),
         # Aliases

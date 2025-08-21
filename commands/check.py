@@ -35,9 +35,29 @@ def _generate_summary_report(include_sidebar, data):
         )
 
 
+def _merge_page_data(base, new):
+    for key in [
+        "links",
+        "pdfs",
+        "embeds",
+        "sidebar_links",
+        "sidebar_pdfs",
+        "sidebar_embeds",
+    ]:
+        base.setdefault(key, []).extend(new.get(key, []))
+
+    for key in ["meta_description", "meta_robots"]:
+        if key not in base or not base.get(key):
+            base[key] = new.get(key, "")
+    return base
+
+
 def cmd_check(args, state):
     # TODO add ability to run check with args like --url, --selector, --include-sidebar
+    urls = state.get_variable("EXISTING_URLS") or []
     url = state.get_variable("URL")
+    if not urls and url:
+        urls = [url]
     selector = state.get_variable("SELECTOR")
     include_sidebar = state.get_variable("INCLUDE_SIDEBAR")
 
@@ -48,7 +68,10 @@ def cmd_check(args, state):
     if missing_vars or invalid_vars:
         return
 
-    print(f"🔍 Checking page: {url}")
+    if len(urls) > 1:
+        print(f"🔍 Checking primary page: {url} (plus {len(urls)-1} additional URLs)")
+    else:
+        print(f"🔍 Checking page: {url}")
     print(f"🎯 Using selector: {selector}")
     if include_sidebar:
         print("🔲 Including sidebar content")
@@ -56,7 +79,7 @@ def cmd_check(args, state):
     debug_print("🔄 state.current_page_data", state.current_page_data)
 
     # Check if we have cached data that matches the current context
-    if state.current_page_data:
+    if state.current_page_data and len(urls) == 1:
         # Verify the cached data is for the current URL/context
         cache_file = state.get_variable("CACHE_FILE")
         is_valid, reason = _is_cache_valid_for_context(state, cache_file)
@@ -74,8 +97,14 @@ def cmd_check(args, state):
     spinner = Spinner(f"🔄 Please wait...")
     spinner.start()
 
+    combined = {}
     try:
-        data = retrieve_page_data(url, selector, include_sidebar)
+        for u in urls:
+            data = retrieve_page_data(u, selector, include_sidebar)
+            if "error" in data:
+                print(f"❌ Failed to extract data for {u}: {data['error']}")
+                continue
+            combined = _merge_page_data(combined, data)
     except Exception as e:
         print(f"❌ Error during page check: {e}")
         debug_print(f"Full error: {e}")
@@ -83,13 +112,10 @@ def cmd_check(args, state):
     finally:
         spinner.stop()
 
-    state.current_page_data = data
+    state.current_page_data = combined
 
-    _cache_page_data(state, url, data)
+    if urls:
+        _cache_page_data(state, urls[0], combined)
 
-    if "error" in data:
-        print(f"❌ Failed to extract data: {data['error']}")
-        return
-
-    _generate_summary_report(include_sidebar, data)
+    _generate_summary_report(include_sidebar, combined)
     print("💡 Use 'show page' to see detailed results")

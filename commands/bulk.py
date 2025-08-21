@@ -1,17 +1,7 @@
 import pandas as pd
-from constants import DOMAINS
-from utils.cache import (
-    _cache_page_data,
-    _update_state_from_cache,
-    _is_cache_valid_for_context,
-)
 from commands.common import print_help_for_command
-from data.dsm import (
-    get_latest_dsm_file,
-    load_spreadsheet,
-)
-from commands.load import _load_url_from_sheet
-from utils.scraping import retrieve_page_data
+from commands.load import cmd_load
+from commands.check import cmd_check
 from utils.core import debug_print
 
 
@@ -193,61 +183,6 @@ def _update_bulk_check_xlsx(
         return False
 
 
-# Helper used by ``cmd_bulk_check`` to load page information.  Shares logic with
-# ``cmd_load`` via :func:`_load_url_from_sheet`.
-def _bulk_load_url(state, domain_name, row_num):
-    """
-    Loads URL and related information from an Excel spreadsheet for a given domain and row number.
-
-    This function retrieves data from an Excel sheet based on the provided domain name and row number.
-    It sets various state variables, including the URL, proposed path, domain name, and row number.
-    If the domain or URL cannot be found, or if an error occurs during processing, the function
-    returns `False`.
-
-    Args:
-        state (object): The state object containing the Excel data and methods to set variables.
-        domain_name (str): The name of the domain to search for in the spreadsheet.
-        row_num (int): The row number in the spreadsheet to retrieve data from.
-
-    Returns:
-        bool: `True` if the URL and related data were successfully loaded and state variables were set,
-              `False` otherwise.
-
-    Notes:
-        - The function assumes the presence of a global `DOMAINS` list, where each domain is a dictionary
-          containing metadata such as `full_name` and `worksheet_header_row`.
-        - URL loading is delegated to :func:`_load_url_from_sheet` to keep behavior consistent with ``cmd_load``.
-    """
-
-    domain = next(
-        (
-            d
-            for d in DOMAINS
-            if d.get("full_name", "").lower() == domain_name.lower()
-            or domain_name.lower() in [alias.lower() for alias in d.get("aliases", [])]
-        ),
-        None,
-    )
-
-    if not domain:
-        debug_print(f"Domain '{domain_name}' not found")
-        return False
-
-    try:
-        url, _ = _load_url_from_sheet(state, domain, row_num)
-        if not url:
-            debug_print(f"Could not find URL for {domain_name} row {row_num}")
-            return False
-
-        return True
-
-    except Exception as e:
-        print(f"❌ Error loading from spreadsheet: {e}")
-        # TODO: if it's a runtime error, we want to exit the command somehow without exiting the app altogether,
-        #   but also without continuing to process the bulk check
-        return False
-
-
 def cmd_bulk_check(args, state):
     """Process multiple pages from an Excel file and update with link counts."""
 
@@ -304,50 +239,25 @@ def cmd_bulk_check(args, state):
                 f"\n🔄 Processing {i}/{len(rows_to_process)}: {domain_name} row {row_num}, kanban_id: {kanban_id}"
             )
 
-            # Load the URL using existing load functionality
             try:
-                success = _bulk_load_url(state, domain_name, row_num)
-                if not success:
+                # Use existing cmd_load to populate state variables
+                cmd_load([domain_name, str(row_num)], state)
+                url = state.get_variable("URL")
+                if not url:
                     print(f"❌ Failed to load URL for {domain_name} row {row_num}")
                     continue
 
                 # Set kanban_id in state for caching
                 state.set_variable("KANBAN_ID", kanban_id)
-                url = state.get_variable("URL")
-                selector = state.get_variable("SELECTOR")
 
-                if not selector:
-                    # Use default selector if none set
+                # Ensure selector and sidebar settings
+                if not state.get_variable("SELECTOR"):
                     state.set_variable("SELECTOR", "#main")
-                    selector = "#main"
+                state.set_variable("INCLUDE_SIDEBAR", False)
 
-                # Check if we have cached data and if it's valid
-                use_cache = False
-                if state.current_page_data:
-                    cache_file = state.get_variable("CACHE_FILE")
-                    is_valid, reason = _is_cache_valid_for_context(state, cache_file)
-
-                    if is_valid:
-                        print(f"  🗂️ Using cached data")
-                        page_data = state.current_page_data
-                        use_cache = True
-                    else:
-                        print(f"  🔄 Cache invalid ({reason}), will regenerate")
-                        state.current_page_data = None
-                        state.set_variable("CACHE_FILE", "")
-
-                if not use_cache:
-                    # Run the check
-                    print(f"  🔍 Checking: {url}")
-                    page_data = retrieve_page_data(url, selector, include_sidebar=False)
-
-                    if "error" in page_data:
-                        print(f"  ❌ Error extracting data: {page_data['error']}")
-                        continue
-
-                    # Cache the data
-                    state.current_page_data = page_data
-                    _cache_page_data(state, url, page_data)
+                # Reuse existing check logic
+                cmd_check([], state)
+                page_data = state.current_page_data or {}
 
                 # Count items (excluding sidebar)
                 links_count = len(page_data.get("links", []))
@@ -360,10 +270,9 @@ def cmd_bulk_check(args, state):
                 )
 
                 print(
-                    f"  📊 Found: {links_count} links, {pdfs_count} PDFs, {embeds_count} embeds, {difficulty_pct:.1%} difficulty"
+                    f"  📊 Found: {links_count} links, {pdfs_count} PDFs, {embeds_count} embeds, {difficulty_pct:.1%} difficulty",
                 )
 
-                # Update Excel file with results
                 update_success = _update_bulk_check_xlsx(
                     xlsx_path,
                     domain_name,
@@ -385,7 +294,6 @@ def cmd_bulk_check(args, state):
                 print(f"❌ Error processing {domain_name} row {row_num}: {e}")
                 debug_print(f"Full error: {e}")
                 continue
-
         print(
             f"\n✅ Bulk check complete! Processed {processed_count}/{len(rows_to_process)} rows"
         )

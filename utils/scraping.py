@@ -61,12 +61,34 @@ def extract_meta_description(soup):
     return ""
 
 
-def extract_links_from_page(soup, response, selector="#main"):
-    """Extract hyperlinks from a BeautifulSoup page container.
+def extract_meta_robots(soup):
+    """Extract the meta robots directive from a BeautifulSoup object."""
 
-    This function now expects the page's ``soup`` and ``response`` objects to
-    be provided.  This avoids fetching the same page multiple times when
-    called from ``retrieve_page_data``.
+    meta_tag = soup.find("meta", attrs={"name": lambda x: x and x.lower() == "robots"})
+    if meta_tag and "content" in meta_tag.attrs:
+        debug_print(f"Meta robots found: {meta_tag['content']}")
+        return meta_tag["content"]
+    debug_print("No meta robots tag found")
+    return ""
+
+
+def extract_links_from_page(soup, response, selector="#main"):
+    """Return the hyperlinks found within a page section.
+
+    Both the parsed ``soup`` and original ``response`` are required so that
+    relative URLs can be resolved without re-fetching the page. Links ending
+    in ``.pdf`` are returned separately from other hyperlinks.
+
+    Args:
+        soup: Parsed BeautifulSoup document for the page.
+        response: ``requests`` response object used to resolve relative URLs.
+        selector: CSS selector identifying the container to inspect. Defaults
+            to ``"#main"`` and falls back to the entire page if not found.
+
+    Returns:
+        tuple[list[tuple[str, str, str]], list[tuple[str, str, str]]]:
+        Two lists containing ``(text, href, status_code)`` tuples for regular
+        links and PDFs respectively.
     """
 
     debug_print(f"Using CSS selector: {selector}")
@@ -81,6 +103,10 @@ def extract_links_from_page(soup, response, selector="#main"):
     links = []
     pdfs = []
     for a in anchors:
+        if a.get("href") == "#" and a.has_attr("data-video"):
+            debug_print("Skipping anchor tag treated as Vimeo embed")
+            continue
+
         text = a.get_text(strip=True)
         href = urljoin(response.url, a["href"])
         debug_print(
@@ -97,6 +123,12 @@ def extract_links_from_page(soup, response, selector="#main"):
 
 
 def extract_embeds_from_page(soup, selector="#main"):
+    """Return Vimeo embeds found on the page.
+
+    Embeds are represented in the markup as ``<a href="#" data-video="..." data-title="...">``
+    elements, which are transformed into iframes by client-side JavaScript.
+    """
+
     embeds = []
     container = soup.select_one(selector)
     if not container:
@@ -104,14 +136,16 @@ def extract_embeds_from_page(soup, selector="#main"):
             f"Warning: No element found matching selector '{selector}', falling back to entire page for embeds"
         )
         container = soup
-    for iframe in container.find_all("iframe", src=True):
-        src = iframe.get("src", "")
-        if "vimeo" in src.lower():
-            title = (
-                iframe.get("title", "") or iframe.get_text(strip=True) or "Vimeo Video"
-            )
-            embeds.append(("vimeo", title, src))
-            debug_print(f"Found Vimeo embed: {title}")
+
+    for a in container.find_all("a", href="#"):
+        video_id = a.get("data-video")
+        if not video_id:
+            continue
+        title = a.get("data-title", "") or a.get_text(strip=True) or "Vimeo Video"
+        src = f"https://player.vimeo.com/video/{video_id}"
+        embeds.append((title, src))
+        debug_print(f"Found Vimeo embed: {title}")
+
     return embeds
 
 
@@ -148,6 +182,8 @@ def retrieve_page_data(url, selector="#main", include_sidebar=False):
 
         meta_description = extract_meta_description(soup)
         debug_print(f"Meta description extracted: {meta_description}")
+        meta_robots = extract_meta_robots(soup)
+        debug_print(f"Meta robots extracted: {meta_robots}")
 
         data = {
             "links": main_links,
@@ -157,6 +193,7 @@ def retrieve_page_data(url, selector="#main", include_sidebar=False):
             "sidebar_pdfs": sidebar_pdfs,
             "sidebar_embeds": sidebar_embeds,
             "meta_description": meta_description,
+            "meta_robots": meta_robots,
         }
 
         total_main = len(main_links) + len(main_pdfs) + len(main_embeds)
@@ -181,6 +218,7 @@ def retrieve_page_data(url, selector="#main", include_sidebar=False):
             "sidebar_pdfs": [],
             "sidebar_embeds": [],
             "meta_description": "",
+            "meta_robots": "",
             "error": str(e),
             "selector_used": selector,
             "include_sidebar": include_sidebar,

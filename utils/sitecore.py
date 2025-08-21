@@ -29,8 +29,11 @@ def get_current_sitecore_root(existing_url: str) -> str:
 
 
 def get_proposed_sitecore_root(existing_url: str) -> str:
-    """
-    Get the proposed Sitecore root folder name based on the proposed path.
+    """Determine the Sitecore root folder for the redesigned site.
+
+    The function checks the domain of ``existing_url`` against entries in
+    :data:`DOMAINS` and returns the ``root_for_new_sitecore`` value when
+    defined. If no mapping exists the current root is returned instead.
     """
     from utils.core import debug_print
 

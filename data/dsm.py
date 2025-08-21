@@ -83,8 +83,48 @@ def get_column_value(sheet_df, excel_row, column_name):
         return ""
 
 
+def get_existing_urls(sheet_df, excel_row, col_name="EXISTING URL"):
+    """Return all URLs found in the ``EXISTING URL`` cell.
+
+    DSM cells can contain multiple URLs separated by whitespace or
+    punctuation.  Previously only the first URL was returned which broke
+    scenarios where a single proposed page consolidates multiple legacy
+    URLs.  This function now returns *all* detected URLs in the cell.
+
+    Parameters
+    ----------
+    sheet_df: pandas.DataFrame
+        Data frame representing the worksheet.
+    excel_row: int
+        Zero-based index of the row to inspect.
+    col_name: str, optional
+        Column header to read from.  Defaults to ``"EXISTING URL"``.
+
+    Returns
+    -------
+    list[str]
+        A list of all URLs found in the cell.  Returns an empty list if
+        no URLs are present.
+    """
+
+    raw_value = get_column_value(sheet_df, excel_row, col_name)
+    if not raw_value:
+        return []
+
+    value = str(raw_value)
+    matches = re.findall(r"https?://[^\s,;]+", value, flags=re.IGNORECASE)
+    if matches:
+        return [m.strip() for m in matches]
+
+    cleaned = value.strip()
+    return [cleaned] if cleaned else []
+
+
 def get_existing_url(sheet_df, excel_row, col_name="EXISTING URL"):
-    return get_column_value(sheet_df, excel_row, col_name)
+    """Backward compatible wrapper returning the first existing URL."""
+
+    urls = get_existing_urls(sheet_df, excel_row, col_name)
+    return urls[0] if urls else ""
 
 
 def get_proposed_url(sheet_df, excel_row, col_name="PROPOSED URL"):
@@ -109,17 +149,23 @@ def count_http(url):
 
 
 def lookup_link_in_dsm(link_url, excel_data=None, state=None):
-    """
-    Look up a link URL in the DSM spreadsheet to find its proposed new location.
+    """Locate a link's destination within the DSM spreadsheet.
+
+    The function normalizes the supplied ``link_url`` and searches every
+    domain sheet for a matching entry. A regex pattern is used so the URL can
+    appear anywhere within the cell and optional trailing slashes are handled.
 
     Args:
-        link_url: The URL to look up (from a link on a page being migrated)
-        excel_data: Loaded Excel data (optional, will use state if not provided)
-        state: State object to get excel_data from if not provided
+        link_url: URL to search for in the DSM.
+        excel_data: Pre-loaded Excel data; ``state.excel_data`` is used when
+            this argument is ``None``.
+        state: State object providing ``excel_data`` when ``excel_data`` is not
+            supplied.
 
     Returns:
-        dict with keys: 'found', 'domain', 'row', 'existing_url', 'proposed_url', 'proposed_hierarchy'
-        Returns {'found': False} if not found
+        dict: Details about the match including ``domain``, ``row``,
+        ``existing_url``, ``proposed_url`` and ``proposed_hierarchy``. If no
+        match is found ``{"found": False}`` is returned.
     """
     debug_print(f"Looking up link in DSM: {link_url}")
 
@@ -177,13 +223,22 @@ def lookup_link_in_dsm(link_url, excel_data=None, state=None):
                     existing_url_col_name = "Current URLs"
                     proposed_url_col_name = "Path"
 
-                existing_url = get_existing_url(df, excel_row, existing_url_col_name)
+                existing_urls = get_existing_urls(df, excel_row, existing_url_col_name)
 
-                if not existing_url:
+                if not existing_urls:
                     continue
 
                 # Use regex to check if the target URL exists anywhere in the cell
-                if re.search(url_pattern, existing_url, re.IGNORECASE):
+                matched_url = next(
+                    (
+                        u
+                        for u in existing_urls
+                        if re.search(url_pattern, u, re.IGNORECASE)
+                    ),
+                    None,
+                )
+
+                if matched_url:
                     proposed_url = get_proposed_url(
                         df, excel_row, proposed_url_col_name
                     )
@@ -193,7 +248,7 @@ def lookup_link_in_dsm(link_url, excel_data=None, state=None):
                     try:
                         from utils.sitecore import get_sitecore_root
 
-                        root = get_sitecore_root(existing_url)
+                        root = get_sitecore_root(matched_url)
                     except ImportError:
                         root = "Sites"  # Default fallback
 
@@ -207,7 +262,7 @@ def lookup_link_in_dsm(link_url, excel_data=None, state=None):
                         "found": True,
                         "domain": domain["full_name"],
                         "row": excel_row,
-                        "existing_url": existing_url,
+                        "existing_url": matched_url,
                         "proposed_url": proposed_url,
                         "proposed_hierarchy": {
                             "root": root,

@@ -2,6 +2,7 @@ import re
 import sys
 import shutil
 import json
+from html import escape
 from pathlib import Path
 from io import StringIO
 from datetime import datetime
@@ -14,29 +15,6 @@ from commands.load import cmd_load
 from utils.core import display_page_data
 from utils.core import output_internal_links_analysis_detail
 from utils.sitecore import print_hierarchy, print_proposed_hierarchy
-
-
-def _capture_migrate_page_mapping_output(state):
-    """Capture the output from migrate page mapping functionality."""
-    url = state.get_variable("URL")
-    if not url:
-        return "❌ No URL set for page mapping."
-
-    output = StringIO()
-    old_stdout = sys.stdout
-    sys.stdout = output
-
-    try:
-        print_hierarchy(url)
-        proposed = state.get_variable("PROPOSED_PATH")
-        if proposed:
-            print_proposed_hierarchy(url, proposed)
-        else:
-            print("No proposed path set. Use 'set PROPOSED_PATH <path>' to set it.")
-    finally:
-        sys.stdout = old_stdout
-
-    return output.getvalue()
 
 
 def _capture_output(func, *args, **kwargs):
@@ -59,39 +37,31 @@ def _build_sitecore_nav_js(path: list[str]) -> str:
     return SITECORE_NAV_JS_TEMPLATE.format(path_array=json_path_array)
 
 
-def _generate_consolidated_section(state):
-    """Generate the consolidated section with enhanced link display."""
+def _extract_sitecore_paths(state):
+    """Return root names, path segments and navigation JS for current and proposed structures."""
     url = state.get_variable("URL")
-    domain = state.get_variable("DOMAIN")
-    row = state.get_variable("ROW")
     proposed_path = state.get_variable("PROPOSED_PATH")
 
-    if not state.current_page_data:
-        return "<p>No page data available.</p>"
-
     try:
-        from utils.sitecore import get_current_sitecore_root, get_proposed_sitecore_root
+        from utils.sitecore import (
+            get_current_sitecore_root,
+            get_proposed_sitecore_root,
+        )
         from html import escape
+        from urllib.parse import urlparse
 
         current_root = get_current_sitecore_root(url)
         proposed_root = get_proposed_sitecore_root(url)
 
-        if url:
-            from urllib.parse import urlparse
-
-            parsed = urlparse(url)
-            existing_segments = [
-                seg for seg in parsed.path.strip("/").split("/") if seg
-            ]
-        else:
-            existing_segments = []
+        parsed = urlparse(url) if url else None
+        existing_segments = (
+            [seg for seg in parsed.path.strip("/").split("/") if seg] if parsed else []
+        )
 
         if proposed_path:
             proposed_segments = [
                 seg for seg in proposed_path.strip("/").split("/") if seg
             ]
-            # HACK - if the first two segements are exactly 'sitecore' and 'content',
-            # remove them from the proposed segments
             if (
                 len(proposed_segments) >= 3
                 and proposed_segments[0] == "sitecore"
@@ -102,16 +72,13 @@ def _generate_consolidated_section(state):
         else:
             proposed_segments = []
 
-        # For "Current Structure", the path starts with "Sites"
         current_path_for_js = ["Sites", current_root] + existing_segments
         current_js = _build_sitecore_nav_js(current_path_for_js)
         escaped_current_js = escape(current_js, quote=True)
 
-        # For "Proposed Structure", the path starts with "Redesign Sites"
         proposed_path_for_js = ["Redesign Sites", proposed_root] + proposed_segments
-        proposed_root == "Content Hub" and proposed_path_for_js.pop(
-            0
-        )  # HACK - remove "Redesign Sites" if it's a Content Hub path
+        if proposed_root == "Content Hub":
+            proposed_path_for_js.pop(0)
         proposed_js = _build_sitecore_nav_js(proposed_path_for_js)
         escaped_proposed_js = escape(proposed_js, quote=True)
 
@@ -123,35 +90,90 @@ def _generate_consolidated_section(state):
         escaped_current_js = ""
         escaped_proposed_js = ""
 
+    return (
+        current_root,
+        existing_segments,
+        escaped_current_js,
+        proposed_root,
+        proposed_segments,
+        escaped_proposed_js,
+    )
+
+
+def _build_source_info_html(urls, domain, row, page_data):
+    """Build the source information section."""
+    meta_description = page_data.get("meta_description", "")
+    meta_robots = page_data.get("meta_robots", "")
+
+    url_links = "<br>".join(
+        f"<a href=\"{u}\" onclick=\"window.open(this.href, '_blank', 'noopener,noreferrer,width=1200,height=1200'); return false;\">{u}</a>"
+        for u in urls
+    )
+
+    url_label = "URLs" if len(urls) > 1 else "URL"
+
     html = f"""
-    <div class="consolidated-section">
         <div class="source-info">
             <h3>📍 Source Information</h3>
-            <p><strong>URL:</strong> <a href="{url}" onclick="window.open(this.href, '_blank', 'noopener,noreferrer,width=1200,height=1200'); return false;">{url}</a></p>
-            <p><strong>DSM Location:</strong> {domain} {row}</p>"""
+            <p><strong>{url_label}:</strong> {url_links}</p>
+            <p><strong>DSM Location:</strong> {domain} {row}</p>
+    """
 
-    # Add meta description if available
-    meta_description = state.current_page_data.get("meta_description", "")
     if meta_description:
-        # Escape HTML characters and truncate if too long
         from html import escape
 
         escaped_meta = escape(meta_description)
         if len(escaped_meta) > 200:
             escaped_meta = escaped_meta[:200] + "..."
-
         html += f"""
-            <p><strong>Meta Description:</strong> 
-                <button onclick="copyMetaDescription(event)" class="copy-btn" style="display: inline-flex;" title="Copy meta description">📋</button>
+            <p><strong>Meta Description:</strong>
+                <button id="copy-meta-btn" onclick="copyMetaDescription(event)" class="copy-btn" style="display: inline-flex;" title="Copy meta description (F1)">📋</button>
                 <span id="meta-desc-text">{escaped_meta}</span>
             </p>"""
     else:
         html += """
             <p><strong>Meta Description:</strong> <em>Not available</em></p>"""
 
+    robots_content = meta_robots.lower()
+    noindex_style = (
+        "color: red; font-weight: bold;" if "noindex" in robots_content else ""
+    )
+    nofollow_style = (
+        "color: red; font-weight: bold;" if "nofollow" in robots_content else ""
+    )
     html += f"""
+            <p><span style="{noindex_style}">noindex</span>, <span style="{nofollow_style}">nofollow</span></p>
         </div>
+    """
 
+    return html
+
+
+def _build_research_taxonomy_html(research_taxonomy):
+    """Build the research taxonomy section if data is available."""
+    if not research_taxonomy:
+        return ""
+
+    return f"""
+        <div class=\"research-taxonomy\">
+            <h3>🔬 Research Taxonomy</h3>
+            <ul>
+                {''.join(f'<li>{escape(t.strip())}</li>' for t in research_taxonomy.split(','))}
+            </ul>
+        </div>
+    """
+
+
+def _build_hierarchy_html(
+    current_root,
+    existing_segments,
+    escaped_current_js,
+    proposed_root,
+    proposed_segments,
+    escaped_proposed_js,
+):
+    """Build the HTML for current and proposed hierarchy sections."""
+    html = f"""
         <div class="hierarchy-info">
             <h3>🏗️ Directory Structure</h3>
             <div class="hierarchy-comparison">
@@ -176,7 +198,7 @@ def _generate_consolidated_section(state):
                 <div class="proposed-hierarchy">
                     <h4>
                         Proposed Structure
-                        <button class="copy-btn" onclick="copyToClipboard(event, `{escaped_proposed_js}`)" title="Copy Sitecore navigation JS">
+                        <button id="copy-proposed-btn" class="copy-btn" onclick="copyToClipboard(event, `{escaped_proposed_js}`)" title="Copy Sitecore navigation JS (F2)">
                             <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor"><path d="M16 1H4c-1.1 0-2 .9-2 2v14h2V3h12V1zm3 4H8c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h11c1.1 0 2-.9 2-2V7c0-1.1-.9-2-2-2zm0 16H8V7h11v14z"/></svg>
                         </button>
                     </h4>
@@ -196,107 +218,126 @@ def _generate_consolidated_section(state):
                 </div>
             </div>
         </div>
-
-        <div class="links-summary">
-            <h3>🔗 Found Links & Resources</h3>
     """
 
-    all_items = []
-    for link in state.current_page_data.get("links", []):
-        all_items.append(("link", link))
-    for link in state.current_page_data.get("sidebar_links", []):
-        all_items.append(("sidebar_link", link))
-    for pdf in state.current_page_data.get("pdfs", []):
-        all_items.append(("pdf", pdf))
-    for pdf in state.current_page_data.get("sidebar_pdfs", []):
-        all_items.append(("sidebar_pdf", pdf))
-    for embed in state.current_page_data.get("embeds", []):
-        all_items.append(("embed", embed))
-    for embed in state.current_page_data.get("sidebar_embeds", []):
-        all_items.append(("sidebar_embed", embed))
+    return html
 
-    if not all_items:
-        html += "<p><em>No links or resources found.</em></p>"
+
+def _collect_page_items(page_data):
+    """Collect all links, PDFs and embeds from page data."""
+    items = []
+    for link in page_data.get("links", []):
+        items.append(("link", link))
+    for link in page_data.get("sidebar_links", []):
+        items.append(("sidebar_link", link))
+    for pdf in page_data.get("pdfs", []):
+        items.append(("pdf", pdf))
+    for pdf in page_data.get("sidebar_pdfs", []):
+        items.append(("sidebar_pdf", pdf))
+    for embed in page_data.get("embeds", []):
+        items.append(("embed", embed))
+    for embed in page_data.get("sidebar_embeds", []):
+        items.append(("sidebar_embed", embed))
+    return items
+
+
+def _truncate_url_display(url: str, max_length: int = 80) -> str:
+    """Return a shortened representation of a URL for display."""
+    if len(url) <= max_length:
+        return escape(url)
+
+    half = (max_length - 3) // 2
+    return escape(url[:half] + "..." + url[-half:])
+
+
+def _build_link_item_html(item_type, item, state):
+    """Build the HTML for a single link/resource entry."""
+    if item_type in {"embed", "sidebar_embed"}:
+        title, src = item
+        debug_print(f"Processing embed: {title} ({src})")
+        escaped_title = escape(title)
+        escaped_src = escape(src, quote=True)
+        attr_safe_src = escape(src, quote=True).replace("'", "&#39;")
+        attr_safe_title = escape(title, quote=True).replace("'", "&#39;")
+        url_display = _truncate_url_display(src)
+        return f"""
+                <div class="link-item">
+                    <div class="link-main">
+                        🎬 <a href="{escaped_src}" target="_blank">{escaped_title}</a>
+                        <button class="copy-btn" onclick="copyEmbedToClipboard(event, '{attr_safe_src}', '{attr_safe_title}')" title="Copy embed HTML">
+                            <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor">
+                                <path d="M16 1H4c-1.1 0-2 .9-2 2v14h2V3h12V1zm3 4H8c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h11c1.1 0 2-.9 2-2V7c0-1.1-.9-2-2-2zm0 16H8V7h11v14z"/>
+                            </svg>
+                        </button>
+                        <span class="item-type type-{item_type.replace('_', ' ')}">[{item_type.replace('_', ' ')}]</span>
+                    </div>
+                    <div class="link-url">{url_display}</div>
+                </div>
+            """
+
+    text, href, status = item
+    debug_print(f"Processing item: {item_type} - {text} ({href}) with status {status}")
+    try:
+        status = int(status)
+    except (ValueError, TypeError):
+        debug_print(f"Invalid status code for {href}: {status} <-- status rec'd")
+        status = 0
+
+    if status == 200:
+        circle = "🟢"
+    elif status == 404:
+        circle = "🔴"
+    elif status == 0:
+        circle = "⚪"
     else:
-        html += '<div class="links-list">'
+        circle = f"🟡 [{status}]"
 
-        for item_type, item in all_items:
-            text, href, status = item
-            debug_print(
-                f"Processing item: {item_type} - {text} ({href}) with status {status}"
+    copy_value = _get_copy_value(href)
+
+    is_contact_link = href.startswith(("tel:", "mailto:"))
+    is_pdf_link = href.lower().endswith(".pdf")
+
+    from urllib.parse import urlparse
+    from constants import DOMAIN_MAPPING
+
+    parsed = urlparse(href)
+    href_hostname = parsed.hostname
+    scheme = parsed.scheme
+    internal_domains = set(DOMAIN_MAPPING.keys())
+    is_internal_page = (
+        not is_contact_link
+        and not is_pdf_link
+        and (scheme in ("http", "https") or not scheme)
+        and (not href_hostname or href_hostname in internal_domains)
+    )
+    internal_hierarchy = ""
+    if is_internal_page:
+        try:
+            from data.dsm import lookup_link_in_dsm
+
+            lookup_result = lookup_link_in_dsm(href, state.excel_data, state)
+            hierarchy = (
+                lookup_result.get("proposed_hierarchy", {}) if lookup_result else {}
             )
-            try:
-                status = int(status)
-            except (ValueError, TypeError):
-                debug_print(
-                    f"Invalid status code for {href}: {status} <-- status rec'd"
-                )
-                status = 0
+            segments = hierarchy.get("segments", [])
+            root_name = hierarchy.get("root", "Sites")
+            internal_hierarchy = f"<div class='internal-hierarchy'>   → {root_name}"
+            for segment in segments:
+                internal_hierarchy += f" / {segment}"
+            internal_hierarchy += "</div>"
+        except Exception:
+            internal_hierarchy = "<div class='internal-hierarchy'>   → Sites</div>"
 
-            if status == 200:
-                circle = "🟢"
-            elif status == 404:
-                circle = "🔴"
-            elif status == 0:
-                circle = "⚪"
-            else:
-                circle = f"🟡 [{status}]"
-
-            copy_value = _get_copy_value(href)
-
-            from urllib.parse import urlparse
-            from constants import DOMAIN_MAPPING
-
-            parsed = urlparse(href)
-            href_hostname = parsed.hostname
-            href_scheme = parsed.scheme
-            internal_domains = set(DOMAIN_MAPPING.keys())
-
-            is_contact_link = href.startswith(("tel:", "mailto:"))
-            is_pdf_link = href.lower().endswith(".pdf")
-
-            is_internal_page = (
-                (href_scheme in ("http", "https", ""))
-                and not is_contact_link
-                and not is_pdf_link
-                and (not href_hostname or href_hostname in internal_domains)
-            )
-
-            internal_hierarchy = ""
-            if is_internal_page:
-                try:
-                    from data.dsm import lookup_link_in_dsm
-
-                    lookup_result = lookup_link_in_dsm(href, state.excel_data, state)
-                    hierarchy = (
-                        lookup_result.get("proposed_hierarchy", {})
-                        if lookup_result
-                        else {}
-                    )
-                    segments = hierarchy.get("segments", [])
-                    root_name = hierarchy.get("root", "Sites")
-                    internal_hierarchy = (
-                        f"<div class='internal-hierarchy'>   → {root_name}"
-                    )
-                    for segment in segments:
-                        internal_hierarchy += f" / {segment}"
-                    internal_hierarchy += "</div>"
-                except Exception:
-                    internal_hierarchy = (
-                        "<div class='internal-hierarchy'>   → Sites</div>"
-                    )
-
-            anchor_copy_button = ""
-            link_kind = "contact" if is_contact_link else "pdf"
-            if is_contact_link or is_pdf_link:
-                anchor_copy_button = f"""
-                        <button class="copy-anchor-btn" onclick="copyAnchorToClipboard(event, '{copy_value}', '{text}', '{link_kind}')" title="Copy as HTML anchor">
+    anchor_copy_button = ""
+    link_kind = "contact" if is_contact_link else "pdf"
+    if is_contact_link or is_pdf_link:
+        anchor_copy_button = f"""
+                        <button class="copy-anchor-btn {link_kind}" onclick="copyAnchorToClipboard(event, '{copy_value}', '{text}', '{link_kind}')" title="Copy as HTML anchor">
                             &lt;/&gt;
                         </button>"""
 
-            display_url = _format_display_url(href)
-
-            html += f"""
+    url_display = _truncate_url_display(href)
+    return f"""
                 <div class="link-item">
                     <div class="link-main">
                         {circle} <a href="{href}" target="_blank">{text}</a>
@@ -305,17 +346,71 @@ def _generate_consolidated_section(state):
                                 <path d="M16 1H4c-1.1 0-2 .9-2 2v14h2V3h12V1zm3 4H8c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h11c1.1 0 2-.9 2-2V7c0-1.1-.9-2-2-2zm0 16H8V7h11v14z"/>
                             </svg>
                         </button>{anchor_copy_button}
-                        <span class="item-type">[{item_type.replace('_', ' ').title()}]</span>
+                        <span class="item-type type-{item_type.replace('_', ' ')}">[{item_type.replace('_', ' ')}]</span>
                     </div>
                     {internal_hierarchy}
-                    <div class="link-url">{display_url}</div>
+                    <div class="link-url">{url_display}</div>
                 </div>
             """
 
-        html += "</div>"
 
-    html += """
+def _build_links_summary_html(items, state):
+    """Build the links/resources summary section."""
+    html = '<div class="links-summary"><h3>🔗 Found Links & Resources</h3>'
+    if not items:
+        html += "<p><em>No links or resources found.</em></p></div>"
+        return html
+
+    html += '<div class="links-list">'
+    for item_type, item in items:
+        html += _build_link_item_html(item_type, item, state)
+    html += "</div></div>"
+    return html
+
+
+def _generate_consolidated_section(state):
+    """Generate the consolidated section with enhanced link display."""
+    urls = state.get_variable("EXISTING_URLS") or []
+    url = urls[0] if urls else state.get_variable("URL")
+    domain = state.get_variable("DOMAIN")
+    row = state.get_variable("ROW")
+
+    if not state.current_page_data:
+        return "<p>No page data available.</p>"
+
+    (
+        current_root,
+        existing_segments,
+        escaped_current_js,
+        proposed_root,
+        proposed_segments,
+        escaped_proposed_js,
+    ) = _extract_sitecore_paths(state)
+
+    source_html = _build_source_info_html(
+        urls or [url], domain, row, state.current_page_data
+    )
+    research_taxonomy = state.get_variable("RESEARCH_TAXONOMY")
+    taxonomy_html = _build_research_taxonomy_html(research_taxonomy)
+    hierarchy_html = _build_hierarchy_html(
+        current_root,
+        existing_segments,
+        escaped_current_js,
+        proposed_root,
+        proposed_segments,
+        escaped_proposed_js,
+    )
+    items = _collect_page_items(state.current_page_data)
+    links_html = _build_links_summary_html(items, state)
+
+    html = f"""
+    <div class="consolidated-section">
+        <div style="display: flex; gap: 20px;">
+            {source_html}
+            {taxonomy_html}
         </div>
+        {hierarchy_html}
+        {links_html}
     </div>
     """
 
@@ -362,7 +457,6 @@ def _generate_html_report(
     domain,
     row,
     show_page_output,
-    migrate_output,
     links_output,
     consolidated_output,
     kanban_id=None,
@@ -390,7 +484,6 @@ def _generate_html_report(
         kanban_url=kanban_html,
         consolidated_output=consolidated_output,
         show_page_output=show_page_output.replace("<", "&lt;").replace(">", "&gt;"),
-        migrate_output=migrate_output.replace("<", "&lt;").replace(">", "&gt;"),
         links_output=links_output.replace("<", "&lt;").replace(">", "&gt;"),
         timestamp=timestamp,
     )
@@ -479,9 +572,6 @@ def _generate_report(state, prompt_open=True, force_regenerate=False):
     else:
         show_page_output = "❌ No page data available. Run 'check' first."
 
-    print("  ▶ Capturing migration mapping...")
-    migrate_output = _capture_migrate_page_mapping_output(state)
-
     print("  ▶ Capturing links analysis...")
     links_output = _capture_output(output_internal_links_analysis_detail, state)
 
@@ -494,7 +584,6 @@ def _generate_report(state, prompt_open=True, force_regenerate=False):
         domain,
         row,
         show_page_output,
-        migrate_output,
         links_output,
         consolidated_output,
         kanban_id,

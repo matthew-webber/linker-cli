@@ -1,19 +1,18 @@
 from data.dsm import (
-    count_http,
     get_latest_dsm_file,
     load_spreadsheet,
-    get_existing_url,
+    get_existing_urls,
     get_proposed_url,
+    get_column_value,
 )
 from constants import DOMAINS
 from utils.core import debug_print
-from commands.common import print_help_for_command
 from utils.cache import _update_state_from_cache
 from utils.validation import validation_wrapper
 
 
-def _load_url_from_sheet(state, domain, row_num):
-    """Load URL and proposed path for a domain/row and update state.
+def _extract_url_and_proposed_path(state, domain, row_num):
+    """Load URLs and proposed path for a domain/row and update state.
 
     Parameters
     ----------
@@ -26,8 +25,8 @@ def _load_url_from_sheet(state, domain, row_num):
 
     Returns
     -------
-    tuple[str | None, str | None]
-        ``(url, proposed_path)`` if a URL was found, otherwise ``(None, None)``.
+    tuple[list[str] | None, str | None]
+        ``(urls, proposed_path)`` if URLs were found, otherwise ``(None, None)``.
     """
 
     if not state.excel_data:
@@ -48,74 +47,61 @@ def _load_url_from_sheet(state, domain, row_num):
         header=domain.get("worksheet_header_row", 4),
     )
 
-    url = get_existing_url(df, row_num - df_header_row, col_name=existing_url_header)
+    urls = get_existing_urls(df, row_num - df_header_row, col_name=existing_url_header)
     proposed = get_proposed_url(
         df, row_num - df_header_row, col_name=proposed_url_header
     )
+    research_taxonomy = get_column_value(
+        df, row_num - df_header_row, "RESEARCH TAXONOMY"
+    )
 
-    if not url:
+    # sort the research taxonomy values alphabetically and join with commas
+    if research_taxonomy:
+        research_taxonomy = ", ".join(
+            sorted(map(str.strip, research_taxonomy.split(",")))
+        )
+
+    if not urls:
         return None, None
 
-    state.set_variable("URL", url)
+    state.set_variable("URL", urls[0])
+    state.set_variable("EXISTING_URLS", urls)
     state.set_variable("PROPOSED_PATH", proposed)
     state.set_variable("DOMAIN", domain.get("full_name", "Domain Placeholder"))
     state.set_variable("ROW", str(row_num))
+    state.set_variable("RESEARCH_TAXONOMY", research_taxonomy)
 
     _update_state_from_cache(
-        state, url=url, domain=domain.get("full_name"), row=str(row_num)
+        state, url=urls[0], domain=domain.get("full_name"), row=str(row_num)
     )
 
-    return url, proposed
+    return urls, proposed
 
 
 @validation_wrapper
 def cmd_load(args, state, *, validated=None):
-    """Handle the 'load' command for loading URLs from spreadsheet."""
+    """Load page information from the DSM spreadsheet.
+
+    The command resolves ``<domain> <row>`` to an existing URL and proposed
+    path, updating the relevant state variables. Cached data is loaded when
+    available to avoid re-fetching page content.
+    """
     state.reset_page_context_state()
 
     if validated:
         domain, row_num = validated
     else:
-        if not args or len(args) < 2:
-            return print_help_for_command("load", state)
-
-        user_domain = " ".join(args[:-1])
-        row_arg = args[-1]
-
-        debug_print("Executing cmd_load with args:", args)
-
-        domain = next(
-            (
-                d
-                for d in DOMAINS
-                if d.get("full_name", "").lower() == user_domain.lower()
-            ),
-            None,
-        )
-
-        try:
-            row_num = int(row_arg)
-        except ValueError:
-            print("❌ Row number must be an integer")
-            return
-
-        if not domain:
-            print(f"❌ Domain '{user_domain}' not found.")
-            print("Available domains:")
-            for i, domain_obj in enumerate([d.get("full_name") for d in DOMAINS], 1):
-                print(f"  {i:2}. {domain_obj}")
-            return
-
+        return
     try:
-        url, _ = _load_url_from_sheet(state, domain, row_num)
-        if not url:
+        urls, _ = _extract_url_and_proposed_path(state, domain, row_num)
+        if not urls:
             print(f"❌ Could not find URL for {domain.get('full_name')} row {row_num}")
             return
 
-        warn = count_http(url) > 1
-        print(f"✅ Loaded URL: {url[:60]}{'...' if len(url) > 60 else ''}")
-        if warn:
-            print("⚠️  WARNING: Multiple URLs detected in this cell.")
+        primary = urls[0]
+        print(f"✅ Loaded URL: {primary[:60]}{'...' if len(primary) > 60 else ''}")
+        if len(urls) > 1:
+            print("⚠️  WARNING: Multiple existing URLs detected for this row.")
 
     except RuntimeError as e:
         print(f"❌ {e}")

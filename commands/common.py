@@ -100,10 +100,14 @@ def print_help_for_command(command, state):
             print("Usage: links")
             print("Analyze all links on the current page for migration mapping.")
             return
+        case "profile":
+            print("Usage: profile")
+            print("Run provider profile URL update script.")
+            return
         case "show":
-            print("Usage: show [variables|domains|page]")
+            print("Usage: show [variables|domains|page|profile <before|after>]")
             print(
-                "Display current variables, list available domains, or show page data."
+                "Display current variables, list available domains, show page data, or open profile reports."
             )
             return
         case "clear":
@@ -123,7 +127,12 @@ def display_domains():
 
 
 def cmd_debug(args, state):
-    """Toggle debug mode."""
+    """Toggle debug output or set it explicitly.
+
+    With no arguments the current debug flag is inverted. Supplying
+    ``on``/``off`` (or truthy equivalents) forces the flag to the
+    desired state.
+    """
     current_debug = state.get_variable("DEBUG")
 
     if not args:
@@ -157,6 +166,7 @@ def cmd_help(args, state):
     print("  check                 Analyze the current URL")
     print("  bulk_check [csv]      Process multiple pages from CSV file")
     print("  migrate               Migrate the current URL")
+    print("  profile               Update provider profile URLs from before.html")
     print(
         "  report [--force] [<domain> <row1> [<row2> ... <rowN>]]      Generate an HTML report for the page"
     )
