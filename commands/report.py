@@ -149,16 +149,16 @@ def _build_source_info_html(urls, domain, row, page_data):
     return html
 
 
-def _build_research_taxonomy_html(research_taxonomy):
-    """Build the research taxonomy section if data is available."""
-    if not research_taxonomy:
+def _build_taxonomy_html(taxonomy):
+    """Build the taxonomy section if data is available."""
+    if not taxonomy:
         return ""
 
     return f"""
-        <div class=\"research-taxonomy\">
-            <h3>🔬 Research Taxonomy</h3>
+        <div class=\"taxonomy\">
+            <h3>🔬 Taxonomy</h3>
             <ul>
-                {''.join(f'<li>{escape(t.strip())}</li>' for t in research_taxonomy.split(','))}
+                {''.join(f'<li>{escape(t.strip())}</li>' for t in taxonomy.split(','))}
             </ul>
         </div>
     """
@@ -390,8 +390,8 @@ def _generate_consolidated_section(state):
     source_html = _build_source_info_html(
         urls or [url], domain, row, state.current_page_data
     )
-    research_taxonomy = state.get_variable("RESEARCH_TAXONOMY")
-    taxonomy_html = _build_research_taxonomy_html(research_taxonomy)
+    taxonomy = state.get_variable("TAXONOMY")
+    taxonomy_html = _build_taxonomy_html(taxonomy)
     hierarchy_html = _build_hierarchy_html(
         current_root,
         existing_segments,

@@ -22,7 +22,7 @@ class CLIState:
             "CACHE_FILE": "",
             "PROPOSED_PATH": "",
             "DEBUG": "true",
-            "RESEARCH_TAXONOMY": "",
+            "TAXONOMY": "",
         }
         self.excel_data = None
         self.current_page_data = None
@@ -111,5 +111,5 @@ class CLIState:
         self.variables["ROW"] = ""
         self.variables["KANBAN_ID"] = ""
         self.variables["PROPOSED_PATH"] = ""
-        self.variables["RESEARCH_TAXONOMY"] = ""
+        self.variables["TAXONOMY"] = ""
         debug_print("Variables reset to defaults.")
