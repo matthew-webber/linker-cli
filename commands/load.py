@@ -51,15 +51,17 @@ def _extract_url_and_proposed_path(state, domain, row_num):
     proposed = get_proposed_url(
         df, row_num - df_header_row, col_name=proposed_url_header
     )
-    research_taxonomy = get_column_value(
-        df, row_num - df_header_row, "RESEARCH TAXONOMY"
-    )
 
-    # sort the research taxonomy values alphabetically and join with commas
-    if research_taxonomy:
-        research_taxonomy = ", ".join(
-            sorted(map(str.strip, research_taxonomy.split(",")))
-        )
+    taxonomy = ""
+    taxonomy_cols = [
+        c for c in df.columns if isinstance(c, str) and "taxonomy" in c.lower()
+    ]
+    if taxonomy_cols:
+        taxonomy = get_column_value(df, row_num - df_header_row, taxonomy_cols[0])
+
+    # sort the taxonomy values alphabetically and join with commas
+    if taxonomy:
+        taxonomy = ", ".join(sorted(map(str.strip, taxonomy.split(","))))
 
     if not urls:
         return None, None
@@ -69,7 +71,7 @@ def _extract_url_and_proposed_path(state, domain, row_num):
     state.set_variable("PROPOSED_PATH", proposed)
     state.set_variable("DOMAIN", domain.get("full_name", "Domain Placeholder"))
     state.set_variable("ROW", str(row_num))
-    state.set_variable("RESEARCH_TAXONOMY", research_taxonomy)
+    state.set_variable("TAXONOMY", taxonomy)
 
     _update_state_from_cache(
         state, url=urls[0], domain=domain.get("full_name"), row=str(row_num)
