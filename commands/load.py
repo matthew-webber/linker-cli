@@ -54,9 +54,10 @@ def _extract_url_and_proposed_path(state, domain, row_num):
 
     taxonomy = ""
     taxonomy_cols = [
-        c for c in df.columns if isinstance(c, str) and "taxonomy" in c.lower()
+        c for c in df.columns if isinstance(c, str) and "taxonomy" in c.lower().strip()
     ]
     if taxonomy_cols:
+        debug_print(f"Found taxonomy column: {taxonomy_cols[0]}")
         taxonomy = get_column_value(df, row_num - df_header_row, taxonomy_cols[0])
 
     # sort the taxonomy values alphabetically and join with commas
