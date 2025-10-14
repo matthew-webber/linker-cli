@@ -67,7 +67,6 @@ coverage.xml
 
 # CSV output
 *.csv
-*.xlsx
 
 migration_cache*
 reports/

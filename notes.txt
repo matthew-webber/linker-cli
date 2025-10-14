@@ -1,0 +1,57 @@
+Migration Notes
+
+
+
+- How to print the values from the "Build Complete" column on the kanban board in order to run bulk_check ====> 
+
+```javascript
+cards = Array.from(document.querySelectorAll('.listWrapper')[1].querySelectorAll('.taskBoardCard')).map(card => {
+    try {
+        const title = card.querySelector('.titleRow')?.innerText || '';
+        const note = card.querySelector('.notesPreview')?.innerText?.split('\n')[0] || '';
+        console.log(`'${card.id}\t${title}\t${note}`);
+    } catch (err) {
+        console.error('Error processing card:', err);
+    }
+    return card;
+});
+```
+
+```javascript
+// REMOVING A BUILDER FROM A CARD ONE AT A TIME
+
+// GOTTA SET i = 0!!!!
+
+i++;
+elements = document.querySelectorAll('.ms-Facepile-members');
+lastElement = elements[elements.length - i];
+lastElement.click();
+document.querySelector('.personaActionButton').click();
+
+```
+
+(Enterprise|Education|ProgressNotes|COM|HCC|Research|Adult Health|CON|CHP|CGS|Children'?s Health|
+
+```
+assignedCards = document.querySelectorAll('.ms-Facepile-members')
+assignedCards.forEach(foo => {console.log(foo.closest('.textContent').innerText); return foo})
+```
+
+- COM 753 - designer/builder omitting entire link text (just once, though...)
+- other enhancement: for linker notes, show a table with columns for "old site" and "new site", also organize better (e.g. move 'check page h1 for accuracy...' out of 1-to-1 mapping table)
+- CLI enhancement: use JS (or Python with bs4 I guess since I may need to download the webpage anyway) to quickly print out what changes I need to manually make / check
+- question: what are the criteria of "program pages"?  Of "research pages"? (related to Linker task related to "taxonomy" field)
+- CLI enhancement: external links = tooltip text generated (e.g. “XYZ website. You are being directed to a website outside of MUSC. MUSC is not responsible for any content or other aspects of the external website.")
+- CLI enhancement: update the "links" command to allow finding correct Existing URL values which have a '#foo' at the end
+- CLI enhancement: (see below)
+	On the DSM – via the line item – check to see if the page has a column labeled “Research Taxonomy” or “Taxonomy” immediately to the right of “NOTES” column in the spread sheet.  
+
+	If a page has taxonomy terms in that column – bring over the exact terms via the “Research Taxonomy” field in Content Editor for that page.  
+
+- CLI enhancement: (see below)
+
+	Links to a physician, healthcare provider, or faculty profile should use link text of the provider/faculty name and credentials:  
+
+	Link Text Template: “Jane Smith, M.D.”  
+
+	Tooltip Template: “Profile of Dr. Smith.” 
