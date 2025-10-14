@@ -55,3 +55,90 @@ assignedCards.forEach(foo => {console.log(foo.closest('.textContent').innerText)
 	Link Text Template: “Jane Smith, M.D.”  
 
 	Tooltip Template: “Profile of Dr. Smith.” 
+
+
+========
+========
+========
+========
+
+
+report CDM 55
+
+report CON 39
+
+report COM 1485
+
+report Enterprise 14
+
+report Adult Health 840
+
+report Adult Health 841
+
+report Education 415
+
+report Adult Health 655 <===== todo
+
+report Education 469
+
+report COM 1344
+
+report COM 895
+
+report COM 1056
+
+report COM 1421
+
+report COM 1424
+
+report COM 490
+
+report HCC 278
+
+report COM 683
+
+report COM 1184
+
+report Education 61
+
+Education 58
+COM 696
+COM 1486
+Education 474
+Children's Health 21
+COM 1420
+CON 115
+COM 661
+COM 222
+COM 1523
+COM 873
+Research 160
+Children's Health 77
+COM 1288
+COM 470
+COM 1534
+Enterprise 15
+Education 459
+COM 729
+COM 468
+COM 1538
+Kids 70
+Children's Health 20
+CDM 9
+COM 1820
+Education 463
+COM 433
+COM 999
+CON 84
+Education 451
+COP 12
+HCC 219
+COM 1789
+COM 240
+COM 1531
+Research 82
+CON 7
+COM 1365
+COM 485
+CHP 23
+CHP 43
