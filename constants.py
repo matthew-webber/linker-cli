@@ -141,6 +141,7 @@ def get_commands(state):
     from commands.bulk import cmd_bulk_check
     from commands.check import cmd_check
     from commands.profile import cmd_profile
+    from commands.history import cmd_history
 
     return {
         "bulk_check": lambda args: cmd_bulk_check(args, state),
@@ -149,6 +150,7 @@ def get_commands(state):
         "clear": lambda args: cmd_clear(args),
         "debug": lambda args: cmd_debug(args, state),
         "help": lambda args: cmd_help(args, state),
+        "history": lambda args: cmd_history(args, state),
         "links": lambda args: cmd_links(args, state),
         "load": lambda args: cmd_load(args, state),
         "open": lambda args: cmd_open(args, state),

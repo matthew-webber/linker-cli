@@ -69,6 +69,7 @@ def _extract_url_and_proposed_path(state, domain, row_num):
 
     state.set_variable("URL", urls[0])
     state.set_variable("EXISTING_URLS", urls)
+    state.set_variable("EXISTING_URLS_COUNT", str(len(urls)))
     state.set_variable("PROPOSED_PATH", proposed)
     state.set_variable("DOMAIN", domain.get("full_name", "Domain Placeholder"))
     state.set_variable("ROW", str(row_num))

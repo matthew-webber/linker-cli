@@ -2,6 +2,7 @@ import argparse
 import warnings
 from pathlib import Path
 from urllib.parse import urljoin, urlparse
+import atexit
 
 from constants import get_commands
 from state import CLIState
@@ -17,6 +18,7 @@ import requests
 from bs4 import BeautifulSoup
 
 from utils.core import debug_print, sync_debug_with_state, set_debug
+from utils.history import get_history, cleanup_history
 
 # Toggle debugging at top level (default: on)
 warnings.filterwarnings("ignore", category=UserWarning, module="openpyxl")
@@ -93,6 +95,12 @@ def main():
     parser.set_defaults(debug=True)
     args = parser.parse_args()
 
+    # Initialize history system
+    history = get_history()
+
+    # Register cleanup function to save history on exit
+    atexit.register(cleanup_history)
+
     # Set debug mode in utils
     set_debug(args.debug, state)
 
@@ -131,9 +139,11 @@ def main():
             context = generate_prompt_context("informational")
             prompt = f"linker_user {context} > "
 
-            user_input = input(prompt).strip()
+            user_input = history.get_input(prompt).strip()
             if not user_input:
                 continue
+
+            history.add_command(user_input)
 
             command, args = parse_command(user_input)
             if command:
