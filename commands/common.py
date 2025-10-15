@@ -114,6 +114,11 @@ def print_help_for_command(command, state):
             print("Usage: clear")
             print("Clear the terminal screen.")
             return
+        case "dsm":
+            print("Usage: dsm")
+            print("Display the currently loaded domain/row data in tabular format.")
+            print("Shows all columns from the DSM spreadsheet for the current context.")
+            return
         case "help":
             print("Usage: help [command]")
             print("Show general help or help for a specific command.")
@@ -165,6 +170,7 @@ def cmd_help(args, state):
     print("  load <domain> <row>   Load URL from spreadsheet")
     print("  check                 Analyze the current URL")
     print("  bulk_check [csv]      Process multiple pages from CSV file")
+    print("  dsm                   Display current domain/row data in tabular format")
     print("  migrate               Migrate the current URL")
     print("  profile               Update provider profile URLs from before.html")
     print(
