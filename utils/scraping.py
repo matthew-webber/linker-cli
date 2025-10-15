@@ -30,7 +30,7 @@ def get_page_soup(url):
     try:
         url = normalize_url(url)
         debug_print(f"Normalized URL: {url}")
-        response = requests.get(url, timeout=30)
+        response = requests.get(url, timeout=5)
         debug_print(
             f"HTTP GET request completed with status code: {response.status_code}"
         )
