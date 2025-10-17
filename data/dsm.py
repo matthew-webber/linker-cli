@@ -8,6 +8,7 @@ import glob
 from urllib.parse import urlparse
 import pandas as pd
 from pathlib import Path
+from time import perf_counter
 
 from constants import DOMAINS
 
@@ -44,9 +45,16 @@ class CachedExcelFile:
         )
 
         if cache_key not in self._cache:
-            self._cache[cache_key] = self._excel_file.parse(
-                sheet_name=sheet_name, header=header, **kwargs
+            label = f"parse[{sheet_name or 'default'}]"
+            self._cache[cache_key] = _time_execution(
+                label,
+                self._excel_file.parse,
+                sheet_name=sheet_name,
+                header=header,
+                **kwargs,
             )
+        else:
+            debug_print(f"⚡ Using cached dataframe for {sheet_name or 'default'}")
 
         return self._cache[cache_key]
 
@@ -107,6 +115,16 @@ def get_latest_dsm_file():
 def load_spreadsheet(path):
     debug_print(f"Loading spreadsheet: {path}")
     return CachedExcelFile(pd.ExcelFile(path))
+
+
+def _time_execution(label, func, *args, **kwargs):
+    """Execute ``func`` and log how long it took for manual performance checks."""
+    start = perf_counter()
+    try:
+        return func(*args, **kwargs)
+    finally:
+        duration_ms = (perf_counter() - start) * 1000
+        debug_print(f"⏱️  {label} completed in {duration_ms:.2f} ms")
 
 
 def get_column_value(sheet_df, excel_row, column_name):
