@@ -13,6 +13,62 @@ from constants import DOMAINS
 
 from utils.core import debug_print
 
+
+class CachedExcelFile:
+    """Wrapper around :class:`pandas.ExcelFile` that memoises parsed worksheets."""
+
+    def __init__(self, excel_file):
+        self._excel_file = excel_file
+        self._cache = {}
+
+    def parse(self, sheet_name=None, header=0, **kwargs):
+        """Parse a worksheet, caching the resulting DataFrame by parameters."""
+
+        def _make_hashable(value):
+            if isinstance(value, dict):
+                return tuple(
+                    sorted((k, _make_hashable(v)) for k, v in value.items())
+                )
+            if isinstance(value, (list, tuple, set)):
+                return tuple(_make_hashable(v) for v in value)
+            return value
+
+        cache_key = (
+            _make_hashable(sheet_name),
+            _make_hashable(header),
+            tuple(
+                sorted((k, _make_hashable(v)) for k, v in kwargs.items())
+            )
+            if kwargs
+            else (),
+        )
+
+        if cache_key not in self._cache:
+            self._cache[cache_key] = self._excel_file.parse(
+                sheet_name=sheet_name, header=header, **kwargs
+            )
+
+        return self._cache[cache_key]
+
+    def clear_cache(self):
+        """Clear any cached worksheets."""
+        self._cache.clear()
+
+    def close(self):
+        """Close the underlying Excel file handle."""
+        self._cache.clear()
+        return self._excel_file.close()
+
+    def __getattr__(self, attr):
+        return getattr(self._excel_file, attr)
+
+    def __enter__(self):
+        self._excel_file.__enter__()
+        return self
+
+    def __exit__(self, exc_type, exc_value, traceback):
+        return self._excel_file.__exit__(exc_type, exc_value, traceback)
+
 DSM_DIR = Path(".")
 
 
@@ -50,7 +106,7 @@ def get_latest_dsm_file():
 
 def load_spreadsheet(path):
     debug_print(f"Loading spreadsheet: {path}")
-    return pd.ExcelFile(path)
+    return CachedExcelFile(pd.ExcelFile(path))
 
 
 def get_column_value(sheet_df, excel_row, column_name):
