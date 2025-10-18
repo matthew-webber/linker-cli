@@ -27,9 +27,7 @@ class CachedExcelFile:
 
         def _make_hashable(value):
             if isinstance(value, dict):
-                return tuple(
-                    sorted((k, _make_hashable(v)) for k, v in value.items())
-                )
+                return tuple(sorted((k, _make_hashable(v)) for k, v in value.items()))
             if isinstance(value, (list, tuple, set)):
                 return tuple(_make_hashable(v) for v in value)
             return value
@@ -37,11 +35,11 @@ class CachedExcelFile:
         cache_key = (
             _make_hashable(sheet_name),
             _make_hashable(header),
-            tuple(
-                sorted((k, _make_hashable(v)) for k, v in kwargs.items())
-            )
-            if kwargs
-            else (),
+            (
+                tuple(sorted((k, _make_hashable(v)) for k, v in kwargs.items()))
+                if kwargs
+                else ()
+            ),
         )
 
         if cache_key not in self._cache:
@@ -76,6 +74,7 @@ class CachedExcelFile:
 
     def __exit__(self, exc_type, exc_value, traceback):
         return self._excel_file.__exit__(exc_type, exc_value, traceback)
+
 
 DSM_DIR = Path(".")
 
