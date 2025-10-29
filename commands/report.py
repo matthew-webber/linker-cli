@@ -59,6 +59,20 @@ def _extract_sitecore_paths(state):
         )
 
         if proposed_path:
+            # Strip domain from proposed path if it contains a full URL
+            # Some DSM sheets have full URLs in the proposed column instead of just paths
+            if any(
+                tld in proposed_path for tld in [".org", ".edu", ".com", ".gov", ".net"]
+            ):
+                # If it doesn't start with a scheme, add one for parsing
+                url_to_parse = (
+                    proposed_path
+                    if proposed_path.startswith(("http://", "https://"))
+                    else f"https://{proposed_path}"
+                )
+                parsed_proposed = urlparse(url_to_parse)
+                proposed_path = parsed_proposed.path
+
             proposed_segments = [
                 seg for seg in proposed_path.strip("/").split("/") if seg
             ]

@@ -325,10 +325,41 @@ def lookup_link_in_dsm(link_url, excel_data=None, state=None):
                     except ImportError:
                         root = "Sites"  # Default fallback
 
+                    # Strip domain from proposed URL if it contains a full URL
+                    # Some DSM sheets have full URLs in the proposed column instead of just paths
+                    # Check for TLDs since http(s):// may already be stripped
+                    if proposed_url and any(
+                        tld in proposed_url
+                        for tld in [".org", ".edu", ".com", ".gov", ".net"]
+                    ):
+                        debug_print(
+                            f"Proposed URL appears to contain a domain, attempting to parse: {proposed_url}"
+                        )
+                        # If it doesn't start with a scheme, add one for parsing
+                        url_to_parse = (
+                            proposed_url
+                            if proposed_url.startswith(("http://", "https://"))
+                            else f"https://{proposed_url}"
+                        )
+                        parsed_proposed = urlparse(url_to_parse)
+                        proposed_path = parsed_proposed.path
+                        debug_print(
+                            f"Stripped domain from proposed URL, using path: {proposed_path}"
+                        )
+                    else:
+                        debug_print(
+                            f"Proposed URL is a path, using as-is: {proposed_url}"
+                        )
+                        proposed_path = proposed_url
+
                     proposed_segments = (
-                        [seg for seg in proposed_url.strip("/").split("/") if seg]
-                        if proposed_url
+                        [seg for seg in proposed_path.strip("/").split("/") if seg]
+                        if proposed_path
                         else []
+                    )
+
+                    debug_print(
+                        f"Proposed hierarchy - root: {root}, segments: {proposed_segments}"
                     )
 
                     return {
