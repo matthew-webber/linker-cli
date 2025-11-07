@@ -64,6 +64,23 @@ def _extract_url_and_proposed_path(state, domain, row_num):
     if taxonomy:
         taxonomy = ", ".join(sorted(map(str.strip, taxonomy.split(","))))
 
+    # Check for Template column to detect specialty detail pages
+    template = ""
+    template_cols = [
+        c for c in df.columns if isinstance(c, str) and "template" in c.lower().strip()
+    ]
+    if template_cols:
+        debug_print(f"Found template column: {template_cols[0]}")
+        template = get_column_value(df, row_num - df_header_row, template_cols[0])
+
+    # Determine if this is a specialty detail page
+    is_specialty_detail = False
+    if template:
+        template_lower = template.lower()
+        if "specialty detail" in template_lower or template_lower == "specialty":
+            is_specialty_detail = True
+            debug_print(f"Detected specialty detail page: {template}")
+
     if not urls:
         return None, None
 
@@ -74,6 +91,10 @@ def _extract_url_and_proposed_path(state, domain, row_num):
     state.set_variable("DOMAIN", domain.get("full_name", "Domain Placeholder"))
     state.set_variable("ROW", str(row_num))
     state.set_variable("TAXONOMY", taxonomy)
+    state.set_variable(
+        "IS_SPECIALTY_DETAIL", "true" if is_specialty_detail else "false"
+    )
+    state.set_variable("TEMPLATE", template)
 
     _update_state_from_cache(
         state, url=urls[0], domain=domain.get("full_name"), row=str(row_num)

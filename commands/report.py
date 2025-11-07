@@ -474,6 +474,7 @@ def _generate_html_report(
     links_output,
     consolidated_output,
     kanban_id=None,
+    is_specialty_detail=False,
 ):
     template_dir = _get_report_template_dir()
     template_path = template_dir / "template.html"
@@ -492,10 +493,20 @@ def _generate_html_report(
     else:
         debug_print("No Kanban ID provided.")
 
+    # Add specialty detail banner and class if applicable
+    specialty_banner = ""
+    specialty_class = ""
+    if is_specialty_detail:
+        specialty_banner = '<div class="specialty-banner">⚠️ SPECIALTY DETAIL PAGE</div>'
+        specialty_class = "specialty-detail"
+        debug_print("Report marked as specialty detail page")
+
     return template.format(
         domain=domain,
         row=row,
         kanban_url=kanban_html,
+        specialty_banner=specialty_banner,
+        specialty_class=specialty_class,
         consolidated_output=consolidated_output,
         show_page_output=show_page_output.replace("<", "&lt;").replace(">", "&gt;"),
         links_output=links_output.replace("<", "&lt;").replace(">", "&gt;"),
@@ -594,6 +605,7 @@ def _generate_report(state, prompt_open=True, force_regenerate=False):
 
     print("  ▶ Generating HTML...")
     kanban_id = state.get_variable("KANBAN_ID")
+    is_specialty_detail = state.get_variable("IS_SPECIALTY_DETAIL") == "true"
     html_content = _generate_html_report(
         domain,
         row,
@@ -601,6 +613,7 @@ def _generate_report(state, prompt_open=True, force_regenerate=False):
         links_output,
         consolidated_output,
         kanban_id,
+        is_specialty_detail,
     )
 
     try:

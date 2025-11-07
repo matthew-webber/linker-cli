@@ -23,6 +23,8 @@ class CLIState:
             "PROPOSED_PATH": "",
             "DEBUG": "true",
             "TAXONOMY": "",
+            "IS_SPECIALTY_DETAIL": "false",
+            "TEMPLATE": "",
         }
         self.excel_data = None
         self.current_page_data = None

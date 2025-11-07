@@ -14,11 +14,26 @@ body {
     box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
     overflow: hidden;
 }
+.specialty-banner {
+    background: linear-gradient(135deg, #ff6b6b 0%, #ff8c42 100%);
+    color: white;
+    padding: 15px 30px;
+    text-align: center;
+    font-weight: bold;
+    font-size: 1.1em;
+    position: sticky;
+    top: 0;
+    z-index: 100;
+    box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
+}
 .header {
     background: linear-gradient(135deg, cornflowerblue 0%, #764ba2 100%);
     color: white;
     padding: 30px;
     text-align: center;
+}
+.header.specialty-detail {
+    background: linear-gradient(135deg, #ff6b6b 0%, #ff8c42 100%);
 }
 .header h1 {
     margin: 0;
