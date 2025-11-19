@@ -51,23 +51,27 @@
     }
     suggestion.click();
 
-    // // pause with a prompt and continue unless the user enters 'quit' into the prompt
-    // const userInput = prompt(
-    //   `Assigned ${domain}…${row} to ${name}. Type 'quit' to stop or press OK to continue.`
-    // );
-    // if (
-    //   (userInput && userInput.toLowerCase() === 'q') ||
-    //   userInput.toLowerCase() === 'quit'
-    // ) {
-    //   console.log('User chose to stop the assignment process.');
-    //   break;
-    // }
+    // pause with a prompt and continue unless the user enters 'quit' into the prompt
+    const userInput = prompt(
+      `Assigned ${domain}…${row} to ${name}. Type 'quit' to stop or press OK to continue.`
+    );
+    if (
+      (userInput && userInput.toLowerCase() === 'q') ||
+      userInput.toLowerCase() === 'quit'
+    ) {
+      console.log('User chose to stop the assignment process.');
+      break;
+    }
 
     // optionally close the popup if needed
     document.querySelector('.assignmentPicker .close')?.click();
   }
 })(
-  'Children\'s Health',
-  [21, 77],
+  'CGS',
+  [
+115, 32, 59, 8, 114, 20, 21, 22, 30
+    
+  ],
   'matt'
 );
+

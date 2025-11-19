@@ -66,7 +66,8 @@
     }
     const firstLine = (notesText.split(/\r?\n/).map(s=>s.trim()).filter(Boolean)[0] || '');
 
-    return `\`${id}\t${title}\t${firstLine}`;
+    // return `\`${id}\t${title}\t${firstLine}`;
+    return `${firstLine} | ${title}`;
   });
 
   // 6) Output + total + clipboard
