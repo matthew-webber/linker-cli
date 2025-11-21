@@ -1,0 +1,11 @@
+{
+  "manifest_version": 3,
+  "name": "Sitecore Nav JS Builder",
+  "description": "Quickly generate Sitecore navigation snippets from proposed paths.",
+  "version": "0.1.0",
+  "action": {
+    "default_popup": "popup.html",
+    "default_title": "Sitecore Nav JS"
+  },
+  "permissions": ["clipboardWrite"]
+}
