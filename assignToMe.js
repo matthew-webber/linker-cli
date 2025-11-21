@@ -45,15 +45,29 @@ const DEBUG = false // Set to false to disable debug logging
     await new Promise((r) => setTimeout(r, 500))
     // wait for popup input to appear
     console.log('Waiting for assignment picker to appear...')
-    const assignmentPicker = await new Promise((resolve) => {
+    const assignmentPicker = await new Promise((resolve, reject) => {
+      const timeout = setTimeout(() => {
+        observer.disconnect()
+        reject(
+          new Error(
+            `Timeout waiting for assignment picker for ${domain}…${row}`
+          )
+        )
+      }, 5000)
+
       const observer = new MutationObserver((_, obs) => {
         const el = document.querySelector('.assignmentPicker')
         if (el) {
+          clearTimeout(timeout)
           obs.disconnect()
           resolve(el)
         }
       })
       observer.observe(document.body, { childList: true, subtree: true })
+    }).catch((error) => {
+      console.error(`❌ FATAL ERROR: ${error.message}`)
+      console.error(`Script terminated at ${domain}…${row}`)
+      throw error // This will stop the entire script
     })
     log('Assignment picker appeared')
 
@@ -86,7 +100,9 @@ const DEBUG = false // Set to false to disable debug logging
 
     // check if user is already assigned (personaActionButton class indicates they are)
     if (suggestion.classList.contains('personaActionButton')) {
-      console.warn(`User is already assigned, skipping ${domain} - ${row}...`)
+      console.log(
+        `🏃‍♂️💨 User is already assigned, skipping ${domain} - ${row}...`
+      )
       log('Closing picker...')
       document.querySelector('.assignmentPicker .close')?.click()
       continue
@@ -116,9 +132,9 @@ const DEBUG = false // Set to false to disable debug logging
 
   console.log('Assignment process completed'.toUpperCase())
 })(
-  'CON',
+  'CGS',
   [
-    39, 48, 50, 71, 77, 114, 119
+    20, 21, 22, 30, 32, 114, 115
   ],
-  'Rinder'
+  'Steve'
 )
